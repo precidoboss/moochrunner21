@@ -14,8 +14,14 @@
     <style>
         /* Base styles */
         * { box-sizing: border-box; }
-        body {
+        html, body {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%; /* Ensure full height for grid */
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        body {
             font-family: 'Share Tech Mono', monospace;
             background-color: #000;
             background-image: radial-gradient(#0f0 1px, #000 1px);
@@ -30,7 +36,6 @@
                 "nav main"
                 "footer footer";
             min-height: 100vh;
-            overflow-y: auto;
         }
 
         header {
@@ -43,14 +48,18 @@
             align-items: center;
             justify-content: center;
             position: relative; /* For absolute positioning of timer and profile */
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            padding-left: 80px; /* Space for timer on desktop */
+            padding-right: 80px; /* Space for profile on desktop */
         }
 
-        header .header-logo-title-wrap { /* New wrapper for logo and main title for alignment */
+        header .header-logo-title-wrap {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 15px;
-            flex-grow: 1; /* Allows it to push timer and profile icon to edges */
+            flex-grow: 1;
+            min-width: 250px; /* Ensure logo/title don't get too squeezed */
         }
 
         header img {
@@ -86,7 +95,7 @@
             color: #0f0;
             font-size: 0.85rem;
             text-shadow: 0 0 3px #0f0;
-            white-space: nowrap; /* Keep text on one line */
+            white-space: nowrap;
         }
         .header-timer-info .timer-box {
             padding: 5px 10px;
@@ -140,7 +149,7 @@
             cursor: pointer;
             transition: all 0.2s ease-in-out;
             flex-shrink: 0;
-            z-index: 1005; /* Ensure it's on top */
+            z-index: 1005;
         }
         .profile-icon:hover {
             transform: translateY(-50%) scale(1.05);
@@ -288,11 +297,11 @@
 
         /* Clock Timer Styles (original, now used by FlipDisplay component) */
         .timer-box {
-            padding: 5px 10px; /* Reduced padding for compact display */
+            padding: 5px 10px;
             background: #000;
             border: 2px solid #0f0;
-            border-radius: 8px; /* Reduced border radius */
-            box-shadow: 0 0 8px #0f0, 0 0 15px #0f0 inset; /* Adjusted shadow */
+            border-radius: 8px;
+            box-shadow: 0 0 8px #0f0, 0 0 15px #0f0 inset;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -301,30 +310,30 @@
         }
         .clock {
             display: flex;
-            gap: 4px; /* Reduced gap */
+            gap: 4px;
             align-items: center;
         }
         .flip-unit {
             perspective: 1000px;
             overflow: hidden;
-            border-radius: 4px; /* Reduced border radius */
+            border-radius: 4px;
         }
         .flip-card {
             position: relative;
-            width: 35px; /* Reduced width */
-            height: 45px; /* Reduced height */
-            font-size: 1.2rem; /* Reduced font size */
+            width: 35px;
+            height: 45px;
+            font-size: 1.2rem;
             line-height: 45px;
             background: #111;
             color: #0f0;
-            border-radius: 4px; /* Reduced border radius */
+            border-radius: 4px;
             box-shadow: 0 0 5px rgba(0, 255, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
             transform-style: preserve-3d;
             transition: transform 0.6s;
             font-family: 'Orbitron', sans-serif;
         }
         .clock span {
-            font-size: 1.5rem; /* Reduced colon size */
+            font-size: 1.5rem;
             text-shadow: 0 0 5px #0f0;
             color: #0f0;
         }
@@ -824,7 +833,7 @@
                     setCurrentValue(value);
                     if (cardRef.current) {
                         cardRef.current.classList.remove('flip');
-                        void cardRef.current.offsetWidth;
+                        void cardRef.current.offsetWidth; 
                         cardRef.current.classList.add('flip');
                     }
                 }
@@ -862,18 +871,16 @@
 
         const App = () => {
             // UI State
-            const [account, setAccount] = useState(null); // Start as null to show Connect Wallet button
-            const [chainId, setChainId] = useState(43114); // Mock Avalanche C-Chain ID
-            const [message, setMessage] = useState(''); // Global message/notification bar (less used now with toast)
-            const [isLoading, setIsLoading] = useState(false); // General loading for mock actions
-            const [activeTab, setActiveTab] = useState('home'); // 'home', 'submit', 'vote', 'balance', 'trending', 'about'
-            const [showWalletModal, setShowWalletModal] = useState(false); // State for wallet settings modal
+            const [account, setAccount] = useState(null);
+            const [chainId, setChainId] = useState(43114);
+            const [message, setMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [activeTab, setActiveTab] = useState('home');
+            const [showWalletModal, setShowWalletModal] = useState(false);
 
             // Cycle Timers and Status (mocked for UI display)
-            const [currentCycleStatus, setCurrentCycleStatus] = useState("Submission"); // Start in Submission phase as requested
-            const [timeRemaining, setTimeRemaining] = useState(3600 * 4 + 10); // Mock 4 hours + 10 seconds for flip effect
-
-            // Derived time for flip clock
+            const [currentCycleStatus, setCurrentCycleStatus] = useState("Submission");
+            const [timeRemaining, setTimeRemaining] = useState(3600 * 4 + 10);
             const hours = Math.floor(timeRemaining / 3600);
             const minutes = Math.floor((timeRemaining % 3600) / 60);
             const seconds = Math.floor(timeRemaining % 60);
@@ -881,17 +888,17 @@
             // Meme Submission State
             const [memeTicker, setMemeTicker] = useState('');
             const [memeName, setMemeName] = useState('');
-            const [memeImage, setMemeImage] = useState(null); // File object
-            const [memeDescription, setMemeDescription] = useState(''); // New state for textarea
+            const [memeImage, setMemeImage] = useState(null);
+            const [memeDescription, setMemeDescription] = useState('');
             const [memeXLink, setMemeXLink] = useState('');
             const [memeImagePreview, setMemeImagePreview] = useState(null);
             const [isSubmittingMeme, setIsSubmittingMeme] = useState(false);
-            const MEME_SUBMISSION_COST = 100; // 100 $MOOCH to submit a meme
+            const MEME_SUBMISSION_COST = 100;
 
             // Meme specific animations
-            const [showMoochdMemeAnimation, setShowMoochdMemeAnimation] = useState(false); // For "You have Mooch'd a meme"
+            const [showMoochdMemeAnimation, setShowMoochdMemeAnimation] = useState(false);
 
-            // Memes for Display/Voting (mocked data with AI-style images and new fields)
+            // Memes for Display/Voting (mocked data)
             const [activeMemes, setActiveMemes] = useState([
                 { id: 1, ticker: "AVAX", name: "Decentralized Snowman", ipfsHash: "300x200/00FF00/000000?text=AI-Snowman", xLink: "https://x.com/mocklink1", votes: 120, active: true, views: 500, submissionDate: "2025-06-25", submitter: "0xMockAddrA1B2C3D4" },
                 { id: 2, ticker: "ETH", name: "Blockchain Forest", ipfsHash: "300x200/00FF00/000000?text=AI-Forest", xLink: "https://x.com/mocklink2", votes: 85, active: true, views: 300, submissionDate: "2025-06-26", submitter: "0xMockAddrE5F6G7H8" },
@@ -901,13 +908,13 @@
             ]);
             const [showMemeDetail, setShowMemeDetail] = useState(false);
             const [selectedMeme, setSelectedMeme] = useState(null);
-            const [votedMemeId, setVotedMemeId] = useState(null); // State for vote animation
-            const [showMoochedAnimation, setShowMoochedAnimation] = useState(false); // State for 'You've been Mooch'd' animation
+            const [votedMemeId, setVotedMemeId] = useState(null);
+            const [showMoochedAnimation, setShowMoochedAnimation] = useState(false);
 
-            // Trending Memes (Mock Data - copy of activeMemes, sorted for display)
+            // Trending Memes (Mock Data)
             const [trendingMemes, setTrendingMemes] = useState([]);
             useEffect(() => {
-                const sortedTrending = [...activeMemes].sort((a, b) => b.votes - a.votes).slice(0, 3); // Top 3 trending
+                const sortedTrending = [...activeMemes].sort((a, b) => b.votes - a.votes).slice(0, 3);
                 setTrendingMemes(sortedTrending);
             }, [activeMemes]);
 
@@ -937,9 +944,9 @@
             const [mockTokenBalance, setMockTokenBalance] = useState(0);
             const [isClaimingTokens, setIsClaimingTokens] = useState(false);
 
-            // Mock Notification State (global toast)
+            // Mock Notification State
             const [notifications, setNotifications] = useState([]);
-            const [liveVoteNotifications, setLiveVoteNotifications] = useState([]); // For sliding vote notifications
+            const [liveVoteNotifications, setLiveVoteNotifications] = useState([]);
 
             // Mock Global Game Statistics
             const [gameStats, setGameStats] = useState({
@@ -956,36 +963,34 @@
                 { id: 3, user: "0xUserC...", action: "voted for", memeName: "Speedy Gecko", timestamp: "3h ago" },
             ]);
 
-            // --- Mock Notification Function (top right toast) ---
+            // --- Notification Functions ---
             const addNotification = useCallback((msg, type = 'info') => {
                 const newNotification = { id: Date.now(), message: msg, type: type };
-                setNotifications(prev => [newNotification, ...prev].slice(0, 5)); // Keep last 5 notifications
+                setNotifications(prev => [newNotification, ...prev].slice(0, 5));
                 setTimeout(() => {
                     setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
-                }, 5000); // Notifications disappear after 5 seconds
+                }, 5000);
             }, []);
 
-            // --- Live Vote Notification (sliding horizontal track) ---
             const addLiveVoteNotification = useCallback((msg) => {
                 const newNotification = { id: Date.now(), message: msg };
-                setLiveVoteNotifications(prev => [...prev, newNotification]); // Add to the end
+                setLiveVoteNotifications(prev => [...prev, newNotification]);
             }, []);
             
-            // Effect to manage the scrolling of live vote notifications
+            // --- Live Vote Track Effect ---
             useEffect(() => {
                 const track = document.getElementById('live-vote-track-inner');
                 if (track) {
-                    track.innerHTML = ''; // Clear existing children to prevent duplicates on re-renders
+                    track.innerHTML = '';
                     liveVoteNotifications.forEach(notification => {
                         const slide = document.createElement('div');
                         slide.className = 'live-vote-slide';
                         slide.textContent = notification.message;
                         track.appendChild(slide);
                     });
-                    // Reset animation by re-applying it
                     track.style.animation = 'none';
-                    void track.offsetWidth; // Trigger reflow
-                    track.style.animation = null; // Re-enable animation
+                    void track.offsetWidth;
+                    track.style.animation = null;
                 }
             }, [liveVoteNotifications]);
 
@@ -1002,9 +1007,9 @@
                 setTimeout(() => {
                     setAccount("0xMockAccount1234567890abcdefABCDEF");
                     addNotification("Mock Wallet Connected!", "success");
-                    setMessage(""); // Clear main message
+                    setMessage("");
                     setIsLoading(false);
-                    setShowWalletModal(false); // Close modal on connect
+                    setShowWalletModal(false);
                 }, 1000);
             };
 
@@ -1015,24 +1020,22 @@
                     setMessage("Wallet disconnected (mock).");
                     addNotification("Mock Wallet Disconnected!", "warning");
                     setIsLoading(false);
-                    setActiveTab('home'); // Go back to home after disconnect
-                    setShowWalletModal(false); // Close modal on disconnect
+                    setActiveTab('home');
+                    setShowWalletModal(false);
                 }, 1000);
             };
 
-            // Timer countdown effect (remains for mocked time display)
+            // Timer countdown effect
             useEffect(() => {
                 const timer = setInterval(() => {
                     setTimeRemaining(prev => {
                         if (prev > 0) return prev - 1;
-                        // When timer hits 0, simulate cycle end if it's voting/prep
                         if ((currentCycleStatus === "Voting" || currentCycleStatus === "Prep") && !isLoading) {
-                            setTimeout(() => handleEndCycle(), 1000); // Trigger end cycle shortly after timer hits 0
+                            setTimeout(() => handleEndCycle(), 1000);
                         }
                         return 0;
                     });
                 }, 1000);
-
                 return () => clearInterval(timer);
             }, [timeRemaining, currentCycleStatus, isLoading]);
 
@@ -1040,7 +1043,6 @@
             const handleImageChange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    // Check file size (e.g., 2MB limit)
                     if (file.size > 2 * 1024 * 1024) {
                         addNotification("Image size too large (max 2MB).", "error");
                         setMemeImage(null);
@@ -1048,7 +1050,7 @@
                         return;
                     }
                     setMemeImage(file);
-                    setMemeImagePreview(URL.createObjectURL(file)); // Create a preview URL
+                    setMemeImagePreview(URL.createObjectURL(file));
                 } else {
                     setMemeImage(null);
                     setMemeImagePreview(null);
@@ -1060,8 +1062,7 @@
                 return new Promise(resolve => {
                     setTimeout(() => {
                         const mockText = encodeURIComponent(memeName.substring(0, 10) || 'Meme Upload');
-                        // Use 300x200 for uploaded memes by default
-                        const mockHash = `300x200/00FF00/000000?text=${mockText}`; // AI-style image
+                        const mockHash = `300x200/00FF00/000000?text=${mockText}`;
                         addNotification("Image uploaded to IPFS (mock)!", "success");
                         resolve(mockHash);
                     }, 1500);
@@ -1767,7 +1768,6 @@
                             </div>
                         ) : (
                             <div className="w-full max-w-full">
-                                {/* The rest of the content based on activeTab */}
                                 {renderContent()}
                             </div>
                         )}
