@@ -260,11 +260,11 @@
 
         main {
             grid-area: main;
-            padding: 1rem; /* Adjusted padding */
+            padding: 1rem;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 1rem; /* Adjusted gap */
+            gap: 1rem;
             overflow-y: auto;
         }
 
@@ -342,7 +342,7 @@
         /* Grid for voting memes */
         .voting-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* 2 columns on most mobiles, more on wider screens */
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* 2 columns on mobile, more on wider screens */
             gap: 0.8rem;
             width: 100%;
             max-width: 800px;
@@ -368,18 +368,18 @@
         }
         .meme-card img {
             max-width: 100%;
-            height: 100px; /* Reduced fixed height */
+            height: 90px; /* Further reduced fixed height */
             object-fit: cover;
             border-radius: 5px;
-            margin-bottom: 0.4rem; /* Reduced margin */
+            margin-bottom: 0.4rem;
             border: 1px solid #0f0;
             box-shadow: 0 0 5px #0f0;
         }
         .meme-card p {
             color: #0f0;
             text-shadow: 0 0 3px #0f0;
-            margin-bottom: 0.2rem; /* Reduced margin */
-            font-size: 0.75rem; /* Reduced font size */
+            margin-bottom: 0.2rem;
+            font-size: 0.7rem; /* Further reduced font size */
         }
         .meme-card p strong {
             color: #fff;
@@ -390,8 +390,8 @@
             background: #000;
             color: #0f0;
             border: 2px solid #0f0;
-            padding: 6px 12px; /* Adjusted padding */
-            margin-top: 0.5rem; /* Adjusted margin */
+            padding: 6px 12px;
+            margin-top: 0.5rem;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
@@ -399,7 +399,7 @@
             box-shadow: 0 0 10px #0f0;
             transition: all 0.2s ease-in-out;
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.8rem; /* Adjusted font size */
+            font-size: 0.8rem;
         }
         .vote-btn:disabled {
             background: #111;
@@ -468,10 +468,10 @@
             box-shadow: 0 0 10px #0f0;
         }
         .file-preview {
-            max-width: 90px; /* Further reduced preview size */
+            max-width: 90px;
             height: auto;
             border: 1px solid #0f0;
-            margin-top: 5px; /* Further reduced margin */
+            margin-top: 5px;
             box-shadow: 0 0 5px #0f0;
         }
 
@@ -494,9 +494,9 @@
             border: 2px solid #0f0;
             border-radius: 15px;
             box-shadow: 0 0 25px #0f0, 0 0 50px #0f0 inset;
-            padding: 1rem; /* Reduced padding */
+            padding: 1rem;
             width: 90%;
-            max-width: 320px; /* Further reduced max-width for smallest modal */
+            max-width: 320px;
             position: relative;
             text-align: center;
             overflow-y: auto;
@@ -504,67 +504,67 @@
             color: #0f0;
         }
         .modal-content h3 {
-            font-size: 1.4rem; /* Reduced font size */
+            font-size: 1.4rem;
             margin-bottom: 0.6rem;
             text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
         }
         .modal-content p {
-            font-size: 0.85rem; /* Reduced font size */
+            font-size: 0.85rem;
             margin-bottom: 0.3rem;
             text-shadow: 0 0 2px #0f0;
         }
         .modal-content img {
             max-width: 90%;
-            max-height: 120px; /* Further adjusted max-height for clicked images */
+            max-height: 120px;
             height: auto;
-            margin: 0.6rem auto; /* Reduced margin */
+            margin: 0.6rem auto;
             border: 2px solid #0f0;
             border-radius: 8px;
             box-shadow: 0 0 15px #0f0;
         }
         .modal-close-btn {
-            top: 6px; /* Adjusted position */
-            right: 6px; /* Adjusted position */
-            font-size: 1.5rem; /* Reduced font size */
+            top: 6px;
+            right: 6px;
+            font-size: 1.5rem;
         }
         .modal-link {
-            font-size: 0.85rem; /* Reduced font size */
+            font-size: 0.85rem;
         }
         .modal-info-value {
-            font-size: 0.9rem; /* Adjusted font size */
+            font-size: 0.9rem;
         }
 
         /* Notifications */
         #notifications-container {
             position: fixed;
-            top: 15px; /* Closer to top */
-            right: 15px; /* Closer to right */
+            top: 15px;
+            right: 15px;
             z-index: 1001;
             display: flex;
             flex-direction: column;
-            gap: 8px; /* Reduced gap */
+            gap: 8px;
         }
         .notification {
             background: rgba(0, 17, 0, 0.9);
             border: 2px solid #0f0;
-            border-radius: 6px; /* Reduced border radius */
-            padding: 8px 12px; /* Reduced padding */
-            box-shadow: 0 0 8px #0f0; /* Reduced shadow */
-            font-size: 0.8rem; /* Reduced font size */
+            border-radius: 6px;
+            padding: 8px 12px;
+            box-shadow: 0 0 8px #0f0;
+            font-size: 0.8rem;
         }
 
         /* Live Vote Notifications - Permanent track below header */
         #live-vote-track-container {
             grid-area: live-vote-track;
             width: 100%;
-            height: 35px; /* Reduced height */
+            height: 35px;
             background: rgba(0, 17, 0, 0.9);
             border-bottom: 2px solid #0f0;
             overflow: hidden;
             position: relative;
             display: flex;
             align-items: center;
-            padding: 0 8px; /* Reduced padding */
+            padding: 0 8px;
         }
         .live-vote-track-inner {
             display: flex;
@@ -581,12 +581,12 @@
         .live-vote-slide {
             background: #0f0;
             color: #000;
-            padding: 4px 12px; /* Reduced padding */
-            border-radius: 4px; /* Reduced border radius */
+            padding: 4px 12px;
+            border-radius: 4px;
             font-weight: bold;
-            font-size: 0.8rem; /* Reduced font size */
-            box-shadow: 0 0 6px rgba(0, 255, 0, 0.7); /* Reduced shadow */
-            margin-right: 15px; /* Reduced margin */
+            font-size: 0.8rem;
+            box-shadow: 0 0 6px rgba(0, 255, 0, 0.7);
+            margin-right: 15px;
             flex-shrink: 0;
         }
 
@@ -595,35 +595,35 @@
             z-index: 1003;
         }
         .mooched-message {
-            font-size: 4rem; /* Adjusted font size */
+            font-size: 4rem;
         }
 
         /* "You have Mooch'd a meme" animation */
-        .mooched-meme-overlay {
+        .moochd-meme-overlay {
             z-index: 1004;
         }
-        .mooched-meme-message {
-            font-size: 2.5rem; /* Adjusted font size */
+        .moochd-meme-message {
+            font-size: 2.5rem;
         }
 
         /* Inactive Phase Animated Image */
         .inactive-phase-container {
-            height: 250px; /* Reduced height */
+            height: 250px;
             padding: 0.8rem;
             gap: 0.8rem;
         }
         .bouncing-image {
-            width: 80px; /* Reduced size */
+            width: 80px;
         }
         .inactive-phase-container p {
-            font-size: 1.5rem; /* Reduced font size */
+            font-size: 1.5rem;
         }
 
         footer {
             grid-area: footer;
             text-align: center;
-            padding: 0.4rem; /* Reduced padding */
-            font-size: 0.8rem; /* Reduced font size */
+            padding: 0.4rem;
+            font-size: 0.8rem;
             background: #001100;
             border-top: 2px solid #0f0;
             text-shadow: 0 0 3px #0f0;
@@ -648,33 +648,33 @@
                 justify-content: center;
                 border-right: none;
                 border-bottom: 2px solid #0f0;
-                padding: 0.8rem; /* Adjusted padding */
-                gap: 8px; /* Reduced gap */
+                padding: 0.8rem;
+                gap: 8px;
             }
             nav button {
                 flex-grow: 1;
-                font-size: 0.7rem; /* Smaller font on mobile */
-                padding: 5px; /* Smaller padding */
-                min-width: unset; /* Allow buttons to shrink more */
+                font-size: 0.7rem;
+                padding: 5px;
+                min-width: unset;
             }
             main {
-                padding: 0.6rem; /* Even less padding on mobile */
+                padding: 0.6rem;
                 gap: 0.6rem;
             }
             header {
                 flex-direction: column; /* Stack header items vertically */
                 align-items: center;
-                padding: 0.8rem; /* Adjusted padding */
+                padding: 0.8rem;
             }
             header .header-logo-title-wrap {
                 flex-direction: column;
                 gap: 5px;
             }
             header h1 {
-                font-size: 1.8rem; /* Smaller H1 */
+                font-size: 1.8rem;
             }
             header img {
-                height: 35px; /* Smaller logo */
+                height: 35px;
             }
             .header-timer-info {
                 position: static; /* Remove absolute positioning on mobile */
@@ -682,59 +682,42 @@
                 flex-direction: row;
                 justify-content: center;
                 align-items: center;
-                gap: 8px; /* Adjusted gap */
+                gap: 8px;
                 margin-top: 10px;
                 width: 100%;
             }
             .header-timer-info .timer-box {
-                padding: 4px 6px; /* Further reduced padding */
+                padding: 4px 6px;
             }
             .header-timer-info .flip-card {
-                width: 25px; /* Smallest flip cards */
+                width: 25px;
                 height: 35px;
                 font-size: 0.9rem;
                 line-height: 35px;
             }
             .header-timer-info .clock span {
-                font-size: 1rem; /* Smallest colon */
+                font-size: 1rem;
             }
             .header-timer-info p {
-                font-size: 0.7rem; /* Smallest text */
+                font-size: 0.7rem;
             }
 
             .profile-icon {
                 position: static; /* Remove absolute positioning on mobile */
                 transform: none;
                 margin-top: 10px;
-                width: 35px; /* Smallest profile icon */
+                width: 35px;
                 height: 35px;
                 font-size: 1.2rem;
             }
-            .app-section {
-                padding: 0.6rem;
+            .wallet-settings-content {
+                padding: 1rem;
             }
-            .app-section h2 {
-                font-size: 1.2rem;
-            }
-            .form-group label, .form-group input, .form-group textarea {
-                font-size: 0.75rem;
-                padding: 0.3rem;
-            }
-            .vote-btn {
-                padding: 4px 8px;
-                font-size: 0.75rem;
-            }
-            .inactive-phase-container {
-                height: 180px;
-            }
-            .bouncing-image {
-                width: 70px;
-            }
-            .mooched-message {
-                font-size: 1.8rem;
-            }
-            .mooched-meme-message {
+            .wallet-settings-content h3 {
                 font-size: 1.5rem;
+            }
+            .wallet-settings-info p {
+                font-size: 0.9rem;
             }
         }
     </style>
