@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        /* Base styles */
+        /* Base styles (as per your full app) */
         * { box-sizing: border-box; }
         html, body {
             margin: 0;
@@ -57,7 +57,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px; /* Reduced gap */
+            gap: 10px;
             flex-grow: 1;
             min-width: 150px;
         }
@@ -432,7 +432,8 @@
         .form-group input[type="url"],
         .form-group input[type="file"],
         .form-group input[type="number"],
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
             width: 100%;
             padding: 0.5rem;
             background: #000;
@@ -448,7 +449,8 @@
         .form-group input[type="url"]:focus,
         .form-group input[type="file"]:focus,
         .form-group input[type="number"]:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #fff;
             box-shadow: inset 0 0 8px rgba(0,255,0,0.8), 0 0 10px rgba(0,255,0,0.8);
@@ -729,8 +731,8 @@
     </div>
     
     <div id="notifications-container"></div>
-    <div id="moochd-animation-container"></div>
-    <div id="mooched-meme-animation-container"></div>
+    <div id="mooched-animation-container"></div>
+    <div id="moochd-meme-animation-container"></div>
     <div id="wallet-settings-modal-root"></div> <!-- Root for wallet settings modal -->
 
 
@@ -779,19 +781,9 @@
         };
 
         // --- WalletSettingsModal Component (new standalone modal) ---
-        const WalletSettingsModal = ({ account, chainId, onDisconnect, onClose }) => {
-            // New state for portfolio value for the modal
-            const [portfolioValue, setPortfolioValue] = useState(0);
-
-            // Calculate portfolio value inside the modal
-            useEffect(() => {
-                // Mock calculation: e.g., 50 MOOCH per point, and AVAX balance direct
-                // This would ideally come from props calculated in App, but for a direct modal snippet:
-                const MOOCH_VALUE_FROM_POINTS = (Math.random() * 500); // Simulate MOOCH value from points
-                const MOCK_AVAX_BALANCE = 1000; // Assuming 1000 AVAX for mock
-                const totalValue = MOOCH_VALUE_FROM_POINTS * 0.05 + MOCK_AVAX_BALANCE * 30; // MOOCH price * AVAX price
-                setPortfolioValue(totalValue.toFixed(2)); // Format to 2 decimal places
-            }, [account]); // Recalculate if account changes
+        const WalletSettingsModal = ({ account, chainId, onDisconnect, onClose, MOOCH_PRICE_USD, AVAX_PRICE_USD, mockTokenBalance, mockAvaxBalance }) => {
+            // Calculate portfolio value based on passed props
+            const portfolioValue = (mockTokenBalance * MOOCH_PRICE_USD + mockAvaxBalance * AVAX_PRICE_USD).toFixed(2);
 
             return ReactDOM.createPortal(
                 <div className="wallet-settings-modal">
@@ -801,8 +793,8 @@
                             <p>Connected: <span>{account ? account.substring(0, 6) + '...' + account.substring(account.length - 4) : 'N/A'}</span></p>
                             <p>Chain ID: <span>{chainId} (Avalanche C-Chain)</span></p>
                             <p>Total Portfolio Value: <span className="text-yellow-300">${portfolioValue}</span></p>
-                            <p>MOOCH Holdings: <span className="text-green-300">{account ? (Math.random() * 1000).toFixed(0) : 'N/A'} $MOOCH</span></p> {/* Mock MOOCH */}
-                            <p>AVAX Holdings: <span className="text-green-300">{account ? (Math.random() * 10).toFixed(2) : 'N/A'} AVAX</span></p> {/* Mock AVAX */}
+                            <p>MOOCH Holdings: <span className="text-green-300">{mockTokenBalance.toFixed(0)} $MOOCH</span></p>
+                            <p>AVAX Holdings: <span className="text-green-300">{mockAvaxBalance.toFixed(2)} AVAX</span></p>
                         </div>
                         <div className="wallet-settings-buttons">
                             <button onClick={onDisconnect}>Disconnect</button>
@@ -886,8 +878,8 @@
                 moochUsedToVote: "10 $MOOCH" 
             });
 
-            // Mock token balance for off-chain feature
-            const [mockTokenBalance, setMockTokenBalance] = useState(0);
+            // Mock token balance for off-chain feature (user's personal MOOCH)
+            const [mockTokenBalance, setMockTokenBalance] = useState(0); 
             const [isClaimingTokens, setIsClaimingTokens] = useState(false);
 
             // Mock Notification State
@@ -911,16 +903,17 @@
 
             // Earn Section States
             const [mockMoochSpentTotal, setMockMoochSpentTotal] = useState(0);
-            const [mockAvaxBalance, setMockAvaxBalance] = useState(1000);
-            const [userPoints, setUserPoints] = useState(0);
-            const [mockApr, setMockApr] = useState(0);
+            const [avaxPoolBalance, setAvaxPoolBalance] = useState(1000); // Pool AVAX, starts at 1000
+            const [mockAvaxBalance, setMockAvaxBalance] = useState(0); // User's personal AVAX balance, starts at 0
+            const [userPoints, setUserPoints] = useState(0); // Calculated based on mooch spent
+            const [mockApr, setMockApr] = useState(0); // Weekly APR in percentage
             const [userClaimableAvax, setUserClaimableAvax] = useState(0);
             const [isClaimingAvax, setIsClaimingAvax] = useState(false);
 
             // OTC Section States
             const [swapAvaxAmount, setSwapAvaxAmount] = useState(0);
             const [selectedSwapToken, setSelectedSwapToken] = useState('');
-            const launchedTokens = [{ ticker: "$MOOCH", priceRatio: 1 }, { ticker: "TOKENB", priceRatio: 0.5 }];
+            const launchedTokens = [{ ticker: "$MOOCH", priceRatio: 1 }, { ticker: "TOKENB", priceRatio: 0.5 }]; // Mock launched tokens
 
             // Mock Prices (Declared once globally in App component)
             const MOOCH_PRICE_USD = 0.05;
@@ -1242,6 +1235,7 @@
                 setTimeout(() => {
                     if (userClaimableAvax > 0) {
                         setMockAvaxBalance(prev => prev + userClaimableAvax);
+                        setAvaxPoolBalance(prev => Math.max(0, prev - userClaimableAvax)); // Deduct from pool
                         addNotification(`Successfully claimed ${userClaimableAvax.toFixed(2)} AVAX!`, "success");
                         setUserClaimableAvax(0);
                         setUserPoints(0);
@@ -1606,21 +1600,49 @@
                                     <p className="text-green-100">Your Earned Points: <span className="text-white font-bold">{userPoints}</span></p>
                                     <p className="text-green-100">Weekly APR: <span className="text-yellow-300 font-bold">{mockApr.toFixed(2)}%</span> (based on points)</p>
                                 </div>
-                            </div>
-                        );
-                    case 'earn': /* New Earn tab content */
-                        return (
-                            <div className="app-section w-full max-w-xl mx-auto">
-                                <h2>💰 Earn $AVAX</h2>
+                                
+                                {/* Earn Section - Now integrated directly under Wallet */}
+                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">💰 Earn $AVAX</h3>
                                 <p className="text-green-100 mb-4">Participate in the ecosystem to earn your share of the AVAX rewards pool!</p>
                                 <div className="text-left space-y-3">
-                                    <p className="text-green-100">AVAX Pool Balance: <span className="text-white font-bold">1000.00 AVAX</span></p>
-                                    <p className="text-green-100">Total Community Points: <span className="text-white font-bold">{gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST}</span></p> {/* Mock total community points */}
-                                    <p className="text-green-100">Overall Weekly APR: <span className="text-yellow-300 font-bold">{(gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST > 0 ? ((gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST) / 1000) * 10 : 0).toFixed(2)}%</span></p> {/* Example overall APR */}
-                                    <p className="text-green-100 mt-6">Your Points: <span className="text-white font-bold">{userPoints}</span></p>
-                                    <p className="text-green-100">Your Claimable AVAX: <span className="text-yellow-300 font-bold">{userClaimableAvax.toFixed(2)} AVAX</span></p>
+                                    <p className="text-green-100">AVAX Pool Balance: <span className="text-white font-bold">{avaxPoolBalance.toFixed(2)} AVAX</span></p>
+                                    <p className="text-green-100">Total Community Points: <span className="text-white font-bold">{gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST}</span></p>
+                                    <p className="text-green-100">Overall Weekly APR: <span className="text-yellow-300 font-bold">{(gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST > 0 ? ((gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST) / 1000) * 10 : 0).toFixed(2)}%</span></p>
+                                    <p className="text-green-100 mt-6">Your Claimable AVAX: <span className="text-yellow-300 font-bold">{userClaimableAvax.toFixed(2)} AVAX</span></p>
                                     <button onClick={handleClaimAvax} disabled={isClaimingAvax || userClaimableAvax <= 0} className="vote-btn w-full">
                                         {isClaimingAvax ? "Claiming AVAX..." : `Claim ${userClaimableAvax.toFixed(2)} AVAX`}
+                                    </button>
+                                </div>
+
+                                {/* OTC Button - Now integrated directly under Wallet */}
+                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">💱 OTC / Swap</h3>
+                                <p className="text-green-100 mb-4">Swap your AVAX for $MOOCH or other launched tokens with a 10% discount!</p>
+                                <div className="text-left space-y-3">
+                                    <p className="text-green-100">OTC Total Supply: <span className="text-white font-bold">100,000,000 $MOOCH (mock)</span></p>
+                                    <p className="text-green-100">Swap Limit: <span className="text-white font-bold">Max 100 AVAX per transaction (mock)</span></p>
+
+                                    <h4 className="text-xl mt-6">Swap AVAX to Token</h4>
+                                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                        <div className="form-group flex-1 w-full">
+                                            <label htmlFor="swapAvaxAmount">Amount AVAX:</label>
+                                            <input type="number" id="swapAvaxAmount" min="0.1" step="0.1" value={swapAvaxAmount} onChange={(e) => setSwapAvaxAmount(parseFloat(e.target.value) || 0)} className="w-full p-2 bg-black border border-0f0 rounded text-0f0 font-mono" max="100" />
+                                        </div>
+                                        <div className="form-group flex-1 w-full">
+                                            <label htmlFor="swapToken">Select Token:</label>
+                                            <select id="swapToken" value={selectedSwapToken} onChange={(e) => setSelectedSwapToken(e.target.value)} className="w-full p-2 bg-black border border-0f0 rounded text-0f0 font-mono">
+                                                <option value="">Select Token</option>
+                                                {launchedTokens.map(token => (
+                                                    <option key={token.ticker} value={token.ticker}>{token.ticker}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p className="text-green-100 text-sm italic">Expected Output: <span className="text-white font-bold">{(swapAvaxAmount / AVAX_PRICE_USD / MOOCH_PRICE_USD * 1.1).toFixed(2)} {selectedSwapToken || "$MOOCH"}</span></p>
+                                    <p className="text-green-100 text-sm italic">Mock Gas Fee: <span className="text-white font-bold">~0.005 AVAX</span></p>
+                                    <p className="text-green-100 text-sm italic">Mock Slippage: <span className="text-white font-bold">0.5%</span></p>
+                                    
+                                    <button onClick={handleSwapAvaxToToken} disabled={swapAvaxAmount <= 0 || !selectedSwapToken || mockAvaxBalance < swapAvaxAmount || isLoading || swapAvaxAmount > 100} className="vote-btn w-full">
+                                        Swap Now
                                     </button>
                                 </div>
                             </div>
@@ -1761,6 +1783,10 @@
                             chainId={chainId} 
                             onDisconnect={disconnectWallet} 
                             onClose={() => setShowWalletModal(false)} 
+                            MOOCH_PRICE_USD={MOOCH_PRICE_USD} /* Pass prices to modal */
+                            AVAX_PRICE_USD={AVAX_PRICE_USD}
+                            mockTokenBalance={mockTokenBalance}
+                            mockAvaxBalance={mockAvaxBalance}
                         />
                     )}
 
