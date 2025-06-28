@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mooch Runner</title>
+    <!-- Google Fonts - Share Tech Mono (for general text) -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Google Fonts - Orbitron (for clock timer) -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN (Still useful for some utility classes, but primary styling is custom) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Base styles */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #000;
+            background-image: radial-gradient(#0f0 1px, #000 1px);
+            background-size: 20px 20px;
+            color: #0f0; /* Default text color to green */
+            display: grid;
+            grid-template-rows: auto auto 1fr auto; /* Header, Live Vote Track, Main, Footer */
+            grid-template-columns: 200px 1fr;
+            grid-template-areas:
+                "header header"
+                "live-vote-track live-vote-track" /* New area for live vote track */
+                "nav main"
+                "footer footer";
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+
+        header {
+            grid-area: header;
+            text-align: center;
+            padding: 1rem;
+            background: #001100;
+            border-bottom: 2px solid #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* For absolute positioning of timer and profile */
+        }
+
+        header .header-logo-title-wrap { /* New wrapper for logo and main title for alignment */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-grow: 1; /* Allows it to push timer and profile icon to edges */
+        }
+
+        header img {
+            height: 80px;
+            filter: drop-shadow(0 0 8px rgba(0,255,0,0.7));
+        }
+        @keyframes header-glow {
+            0%, 100% { text-shadow: 0 0 5px #0f0, 0 0 10px #0f0, 0 0 20px #0f0; }
+            50% { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0f0; }
+        }
+        header h1 {
+            font-size: 3rem;
+            text-shadow: 0 0 5px #0f0, 0 0 10px #0f0;
+            animation: header-glow 2s infinite alternate ease-in-out;
+            color: #0f0;
+            margin: 0;
+        }
+        header .header-tagline {
+            font-size: 1.2rem;
+            text-shadow: 0 0 3px #0f0;
+        }
+
+        /* Header Timer & Phase Display (now direct children of header) */
+        .header-timer-info {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+            color: #0f0;
+            font-size: 0.85rem;
+            text-shadow: 0 0 3px #0f0;
+            white-space: nowrap; /* Keep text on one line */
+        }
+        .header-timer-info .timer-box {
+            padding: 5px 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 8px #0f0, 0 0 15px #0f0 inset;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+        .header-timer-info .clock {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .header-timer-info .flip-card {
+            width: 35px;
+            height: 45px;
+            font-size: 1.2rem;
+            line-height: 45px;
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .header-timer-info .clock span {
+            font-size: 1.5rem;
+            color: #0f0;
+        }
+        .header-timer-info p {
+            margin: 0;
+            font-size: 0.9rem;
+            text-shadow: 0 0 3px #0f0;
+        }
+
+        /* Profile Icon (top right of header) */
+        .profile-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #000;
+            border: 2px solid #0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0f0;
+            filter: drop-shadow(0 0 8px rgba(0,255,0,0.7));
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            flex-shrink: 0;
+            z-index: 1005; /* Ensure it's on top */
+        }
+        .profile-icon:hover {
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        /* Wallet Settings Modal */
+        .wallet-settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1006;
+            animation: fade-in 0.3s ease-out;
+        }
+        .wallet-settings-content {
+            background: #001100;
+            border: 2px solid #0f0;
+            border-radius: 15px;
+            box-shadow: 0 0 25px #0f0, 0 0 50px #0f0 inset;
+            padding: 2rem;
+            width: 90%;
+            max-width: 450px;
+            position: relative;
+            text-align: center;
+            color: #0f0;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .wallet-settings-content h3 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px #0f0;
+        }
+        .wallet-settings-info p {
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            color: #0f0;
+            text-shadow: 0 0 2px #0f0;
+        }
+        .wallet-settings-info span {
+            color: #fff;
+            text-shadow: 0 0 5px #fff;
+        }
+        .wallet-settings-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 2rem;
+            gap: 15px;
+        }
+        .wallet-settings-buttons button {
+            background: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: 0 0 5px #0f0;
+            box-shadow: 0 0 10px #0f0;
+            transition: all 0.2s ease-in-out;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .wallet-settings-buttons button:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
+        }
+
+
+        nav {
+            grid-area: nav;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            background: #001100;
+            padding: 1rem;
+            gap: 10px;
+            border-right: 2px solid #0f0;
+        }
+
+        nav button {
+            background: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            text-shadow: 0 0 5px #0f0;
+            transition: all 0.3s ease-in-out;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        nav button.active-nav {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
+        }
+
+        nav button:hover:not(.active-nav) {
+            background: #003300;
+            color: #0f0;
+            box-shadow: 0 0 15px #0f0, inset 0 0 8px #0f0;
+            transform: scale(1.02);
+        }
+
+        main {
+            grid-area: main;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+
+        /* Common section styling */
+        .app-section {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(0, 17, 0, 0.7);
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+            padding: 1rem;
+            text-align: center;
+            backdrop-filter: blur(2px);
+        }
+        .app-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 8px #0f0, 0 0 15px #0f0;
+            color: #0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        /* Clock Timer Styles (original, now used by FlipDisplay component) */
+        .timer-box {
+            padding: 5px 10px; /* Reduced padding for compact display */
+            background: #000;
+            border: 2px solid #0f0;
+            border-radius: 8px; /* Reduced border radius */
+            box-shadow: 0 0 8px #0f0, 0 0 15px #0f0 inset; /* Adjusted shadow */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            color: #0f0;
+        }
+        .clock {
+            display: flex;
+            gap: 4px; /* Reduced gap */
+            align-items: center;
+        }
+        .flip-unit {
+            perspective: 1000px;
+            overflow: hidden;
+            border-radius: 4px; /* Reduced border radius */
+        }
+        .flip-card {
+            position: relative;
+            width: 35px; /* Reduced width */
+            height: 45px; /* Reduced height */
+            font-size: 1.2rem; /* Reduced font size */
+            line-height: 45px;
+            background: #111;
+            color: #0f0;
+            border-radius: 4px; /* Reduced border radius */
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .clock span {
+            font-size: 1.5rem; /* Reduced colon size */
+            text-shadow: 0 0 5px #0f0;
+            color: #0f0;
+        }
+        @keyframes flip {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(-90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        /* Grid for voting memes */
+        .voting-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .meme-card {
+            background: #000;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            padding: 0.8rem;
+            text-align: center;
+            box-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+        .meme-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 25px #0f0;
+        }
+        .meme-card img {
+            max-width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #0f0;
+            box-shadow: 0 0 5px #0f0;
+        }
+        .meme-card p {
+            color: #0f0;
+            text-shadow: 0 0 3px #0f0;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .meme-card p strong {
+            color: #fff;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        .vote-btn {
+            background: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 8px 16px;
+            margin-top: 0.8rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: 0 0 5px #0f0;
+            box-shadow: 0 0 10px #0f0;
+            transition: all 0.2s ease-in-out;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        .vote-btn:disabled {
+            background: #111;
+            color: #555;
+            border-color: #444;
+            cursor: not-allowed;
+            box-shadow: none;
+            text-shadow: none;
+        }
+        .vote-btn:hover:not(:disabled) {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 0.8rem;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.3rem;
+            color: #0f0;
+            text-shadow: 0 0 3px #0f0;
+            font-size: 0.95rem;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group input[type="file"],
+        .form-group input[type="number"],
+        .form-group textarea {
+            width: 100%;
+            padding: 0.6rem;
+            background: #000;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            color: #0f0;
+            font-family: 'Share Tech Mono', monospace;
+            text-shadow: 0 0 2px #0f0;
+            box-shadow: inset 0 0 5px rgba(0,255,0,0.5);
+            transition: all 0.2s ease;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="url"]:focus,
+        .form-group input[type="file"]:focus,
+        .form-group input[type="number"]:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #fff;
+            box-shadow: inset 0 0 8px rgba(0,255,0,0.8), 0 0 10px rgba(0,255,0,0.8);
+        }
+        .form-group input[type="file"]::-webkit-file-upload-button {
+            background: #003300;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-shadow: 0 0 3px #0f0;
+            transition: all 0.2s ease;
+        }
+        .form-group input[type="file"]::-webkit-file-upload-button:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 10px #0f0;
+        }
+        .file-preview {
+            max-width: 120px;
+            height: auto;
+            border: 1px solid #0f0;
+            margin-top: 8px;
+            box-shadow: 0 0 5px #0f0;
+        }
+
+        /* Modal Styles (for meme detail) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fade-in 0.3s ease-out;
+        }
+        .modal-content {
+            background: #001100;
+            border: 2px solid #0f0;
+            border-radius: 15px;
+            box-shadow: 0 0 25px #0f0, 0 0 50px #0f0 inset;
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            text-align: center;
+            overflow-y: auto;
+            max-height: 90vh;
+            color: #0f0;
+        }
+        .modal-content h3 {
+            font-size: 1.8rem;
+            margin-bottom: 0.8rem;
+            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+        .modal-content p {
+            font-size: 1rem;
+            margin-bottom: 0.4rem;
+            text-shadow: 0 0 2px #0f0;
+        }
+        .modal-content img {
+            max-width: 90%;
+            max-height: 180px;
+            height: auto;
+            margin: 1rem auto;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            box-shadow: 0 0 15px #0f0;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            color: #0f0;
+            cursor: pointer;
+            text-shadow: 0 0 10px #0f0;
+            transition: all 0.2s ease;
+        }
+        .modal-close-btn:hover {
+            color: #fff;
+            text-shadow: 0 0 15px #fff;
+        }
+        .modal-link {
+            color: #0ff;
+            text-decoration: underline;
+            text-shadow: 0 0 5px #0ff;
+            transition: all 0.2s ease;
+        }
+        .modal-link:hover {
+            color: #fff;
+            text-shadow: 0 0 8px #fff;
+        }
+        .modal-info-label {
+            color: #0f0;
+        }
+        .modal-info-value {
+            color: #fff;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        /* Notifications */
+        #notifications-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .notification {
+            background: rgba(0, 17, 0, 0.9);
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 10px 15px;
+            box-shadow: 0 0 10px #0f0;
+            color: #0f0;
+            font-size: 0.9rem;
+            opacity: 0;
+            animation: fade-in 0.3s forwards;
+        }
+        .notification.success { border-color: #0f0; color: #0f0; }
+        .notification.info { border-color: #0ff; color: #0ff; }
+        .notification.warning { border-color: #ff0; color: #ff0; }
+        .notification.error { border-color: #f00; color: #f00; }
+
+        /* Live Vote Notifications - Permanent track below header */
+        #live-vote-track-container {
+            grid-area: live-vote-track;
+            width: 100%;
+            height: 40px;
+            background: rgba(0, 17, 0, 0.9);
+            border-bottom: 2px solid #0f0;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .live-vote-track-inner {
+            display: flex;
+            position: absolute;
+            left: 0;
+            animation: scroll-left 30s linear infinite;
+            white-space: nowrap;
+            will-change: transform;
+        }
+        @keyframes scroll-left {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-100%); }
+        }
+        .live-vote-slide {
+            background: #0f0;
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.7);
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Mooch'd Animation */
+        .mooched-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1003;
+            animation: fade-in 0.3s forwards;
+        }
+        .mooched-message {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 5rem;
+            color: #0f0;
+            text-shadow: 0 0 20px #0f0, 0 0 40px #0f0, 0 0 60px #fff;
+            animation: mooched-pulse 1s infinite alternate;
+            opacity: 1;
+        }
+        @keyframes mooched-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        /* "You have Mooch'd a meme" animation */
+        .mooched-meme-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1004;
+            animation: fade-in 0.3s forwards;
+        }
+        .mooched-meme-message {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            color: #fff;
+            text-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
+            animation: mooched-meme-pulse 0.8s infinite alternate;
+        }
+        @keyframes mooched-meme-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        /* Inactive Phase Animated Image */
+        .inactive-phase-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border: 2px solid #0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .bouncing-image {
+            position: absolute;
+            width: 100px;
+            height: auto;
+            object-fit: contain; /* Ensure image fits without cropping */
+            animation: bounce 4s infinite linear;
+            filter: drop-shadow(0 0 10px rgba(0,255,0,0.7));
+            z-index: 10;
+        }
+
+        footer {
+            grid-area: footer;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            background: #001100;
+            border-top: 2px solid #0f0;
+            text-shadow: 0 0 3px #0f0;
+            color: #0f0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto 1fr auto;
+                grid-template-areas:
+                    "header"
+                    "live-vote-track"
+                    "nav"
+                    "main"
+                    "footer";
+            }
+            nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                border-right: none;
+                border-bottom: 2px solid #0f0;
+            }
+            nav button {
+                flex-grow: 1;
+                font-size: 0.8rem;
+                padding: 6px;
+            }
+            main {
+                padding: 0.8rem;
+                gap: 0.8rem;
+            }
+            header h1 {
+                font-size: 2rem;
+            }
+            header img {
+                height: 40px;
+            }
+            .header-timer-info {
+                position: static; /* Remove absolute positioning on mobile */
+                transform: none;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                gap: 10px;
+                margin-top: 10px;
+                width: 100%;
+            }
+            .header-timer-info .timer-box {
+                padding: 5px 8px;
+            }
+            .header-timer-info .flip-card {
+                width: 30px;
+                height: 40px;
+                font-size: 1.1rem;
+                line-height: 40px;
+            }
+            .header-timer-info .clock span {
+                font-size: 1.2rem;
+            }
+            .header-timer-info p {
+                font-size: 0.8rem;
+            }
+
+            .profile-icon {
+                top: 10px;
+                right: 10px;
+                width: 40px;
+                height: 40px;
+                font-size: 1.5rem;
+            }
+            .wallet-settings-content {
+                padding: 1rem;
+            }
+            .wallet-settings-content h3 {
+                font-size: 1.5rem;
+            }
+            .wallet-settings-info p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root-container"> {/* New root container for the entire React app */}
+        {/* React will render the entire application UI here */}
+    </div>
+    
+    <div id="notifications-container"></div>
+    <div id="mooched-animation-container"></div>
+    <div id="moochd-meme-animation-container"></div>
+    <div id="wallet-settings-modal-root"></div> <!-- Root for wallet settings modal -->
+
+
+    <!-- React and ReactDOM CDNs -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation in browser (for development only, not production) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+        const ReactDOM = window.ReactDOM;
+
+        // --- Helper for formatting timers ---
+        const formatTime = (seconds) => {
+            if (seconds < 0) seconds = 0;
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        // --- FlipDisplay Component for animated numbers ---
+        const FlipDisplay = ({ value }) => {
+            const [currentValue, setCurrentValue] = useState(value);
+            const cardRef = useRef(null);
+
+            useEffect(() => {
+                if (value !== currentValue) {
+                    setCurrentValue(value);
+                    if (cardRef.current) {
+                        cardRef.current.classList.remove('flip');
+                        void cardRef.current.offsetWidth;
+                        cardRef.current.classList.add('flip');
+                    }
+                }
+            }, [value, currentValue]);
+
+            return (
+                <div className="flip-unit">
+                    <div ref={cardRef} className="flip-card">
+                        {currentValue}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- WalletSettingsModal Component (new standalone modal) ---
+        const WalletSettingsModal = ({ account, chainId, onDisconnect, onClose }) => {
+            return ReactDOM.createPortal(
+                <div className="wallet-settings-modal">
+                    <div className="wallet-settings-content">
+                        <h3>Wallet Details</h3>
+                        <div className="wallet-settings-info">
+                            <p>Connected: <span>{account ? account.substring(0, 6) + '...' + account.substring(account.length - 4) : 'N/A'}</span></p>
+                            <p>Chain ID: <span>{chainId} (Avalanche C-Chain)</span></p>
+                        </div>
+                        <div className="wallet-settings-buttons">
+                            <button onClick={onDisconnect}>Disconnect</button>
+                            <button onClick={onClose}>Back</button>
+                        </div>
+                    </div>
+                </div>,
+                document.getElementById('wallet-settings-modal-root')
+            );
+        };
+
+
+        const App = () => {
+            // UI State
+            const [account, setAccount] = useState(null); // Start as null to show Connect Wallet button
+            const [chainId, setChainId] = useState(43114); // Mock Avalanche C-Chain ID
+            const [message, setMessage] = useState(''); // Global message/notification bar (less used now with toast)
+            const [isLoading, setIsLoading] = useState(false); // General loading for mock actions
+            const [activeTab, setActiveTab] = useState('home'); // 'home', 'submit', 'vote', 'balance', 'trending', 'about'
+            const [showWalletModal, setShowWalletModal] = useState(false); // State for wallet settings modal
+
+            // Cycle Timers and Status (mocked for UI display)
+            const [currentCycleStatus, setCurrentCycleStatus] = useState("Submission"); // Start in Submission phase as requested
+            const [timeRemaining, setTimeRemaining] = useState(3600 * 4 + 10); // Mock 4 hours + 10 seconds for flip effect
+
+            // Derived time for flip clock
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = Math.floor(timeRemaining % 60);
+
+            // Meme Submission State
+            const [memeTicker, setMemeTicker] = useState('');
+            const [memeName, setMemeName] = useState('');
+            const [memeImage, setMemeImage] = useState(null); // File object
+            const [memeDescription, setMemeDescription] = useState(''); // New state for textarea
+            const [memeXLink, setMemeXLink] = useState('');
+            const [memeImagePreview, setMemeImagePreview] = useState(null);
+            const [isSubmittingMeme, setIsSubmittingMeme] = useState(false);
+            const MEME_SUBMISSION_COST = 100; // 100 $MOOCH to submit a meme
+
+            // Meme specific animations
+            const [showMoochdMemeAnimation, setShowMoochdMemeAnimation] = useState(false); // For "You have Mooch'd a meme"
+
+            // Memes for Display/Voting (mocked data with AI-style images and new fields)
+            const [activeMemes, setActiveMemes] = useState([
+                { id: 1, ticker: "AVAX", name: "Decentralized Snowman", ipfsHash: "300x200/00FF00/000000?text=AI-Snowman", xLink: "https://x.com/mocklink1", votes: 120, active: true, views: 500, submissionDate: "2025-06-25", submitter: "0xMockAddrA1B2C3D4" },
+                { id: 2, ticker: "ETH", name: "Blockchain Forest", ipfsHash: "300x200/00FF00/000000?text=AI-Forest", xLink: "https://x.com/mocklink2", votes: 85, active: true, views: 300, submissionDate: "2025-06-26", submitter: "0xMockAddrE5F6G7H8" },
+                { id: 3, ticker: "SOL", name: "Speedy Gecko", ipfsHash: "300x200/00FF00/000000?text=AI-Gecko", xLink: "https://x.com/mocklink3", votes: 200, active: true, views: 700, submissionDate: "2025-06-24", submitter: "0xMockAddrI9J0K1L2" },
+                { id: 4, ticker: "DOGE", name: "Moon Doge", ipfsHash: "300x200/00FF00/000000?text=AI-Doge", xLink: "https://x.com/mocklink4", votes: 95, active: true, views: 450, submissionDate: "2025-06-27", submitter: "0xMockAddrM3N4O5P6" },
+                { id: 5, ticker: "ADA", name: "Smart Contract Tree", ipfsHash: "300x200/00FF00/000000?text=AI-Tree", xLink: "https://x.com/mocklink5", votes: 150, active: true, views: 600, submissionDate: "2025-06-23", submitter: "0xMockAddrQ7R8S9T0" },
+            ]);
+            const [showMemeDetail, setShowMemeDetail] = useState(false);
+            const [selectedMeme, setSelectedMeme] = useState(null);
+            const [votedMemeId, setVotedMemeId] = useState(null); // State for vote animation
+            const [showMoochedAnimation, setShowMoochedAnimation] = useState(false); // State for 'You've been Mooch'd' animation
+
+            // Trending Memes (Mock Data - copy of activeMemes, sorted for display)
+            const [trendingMemes, setTrendingMemes] = useState([]);
+            useEffect(() => {
+                const sortedTrending = [...activeMemes].sort((a, b) => b.votes - a.votes).slice(0, 3); // Top 3 trending
+                setTrendingMemes(sortedTrending);
+            }, [activeMemes]);
+
+            // Top Tokens (Mock Data for Home Tab)
+            const [topTokens, setTopTokens] = useState([
+                { ticker: "BTC", logo: "100x100/FFA500/000000?text=BTC", mc: "1.3T $" },
+                { ticker: "ETH", logo: "100x100/808080/FFFFFF?text=ETH", mc: "400B $" },
+                { ticker: "SOL", logo: "100x100/00FFFF/000000?text=SOL", mc: "80B $" },
+            ]);
+
+            // Last Meme of the Day
+            const [lastMemeOfTheDay, setLastMemeOfTheDay] = useState({ 
+                id: 101, 
+                ticker: "BTC", 
+                name: "Cyberpunk Whale", 
+                ipfsHash: "400x300/00FF00/000000?text=AI-Winning+Meme", 
+                xLink: "https://x.com/mocklastmeme", 
+                votes: 750, 
+                submitter: "0xMockSubmitterAddressExample01",
+                currentMC: "200B $", 
+                ath: "70000 $", 
+                totalSupply: "21M BTC", 
+                moochUsedToVote: "10 $MOOCH" 
+            });
+
+            // Mock token balance for off-chain feature
+            const [mockTokenBalance, setMockTokenBalance] = useState(0);
+            const [isClaimingTokens, setIsClaimingTokens] = useState(false);
+
+            // Mock Notification State (global toast)
+            const [notifications, setNotifications] = useState([]);
+            const [liveVoteNotifications, setLiveVoteNotifications] = useState([]); // For sliding vote notifications
+
+            // Mock Global Game Statistics
+            const [gameStats, setGameStats] = useState({
+                totalMemes: 150,
+                totalVotes: 5200,
+                activeParticipants: 85,
+                cyclesCompleted: 12,
+            });
+
+            // Mock Activity Feed (for Trending tab)
+            const [activityFeed, setActivityFeed] = useState([
+                { id: 1, user: "0xUserA...", action: "voted for", memeName: "Decentralized Snowman", timestamp: "2m ago" },
+                { id: 2, user: "0xUserB...", action: "submitted", memeName: "Blockchain Forest", timestamp: "1h ago" },
+                { id: 3, user: "0xUserC...", action: "voted for", memeName: "Speedy Gecko", timestamp: "3h ago" },
+            ]);
+
+            // --- Mock Notification Function (top right toast) ---
+            const addNotification = useCallback((msg, type = 'info') => {
+                const newNotification = { id: Date.now(), message: msg, type: type };
+                setNotifications(prev => [newNotification, ...prev].slice(0, 5)); // Keep last 5 notifications
+                setTimeout(() => {
+                    setNotifications(prev => prev.filter(n => n.id !== newNotification.id));
+                }, 5000); // Notifications disappear after 5 seconds
+            }, []);
+
+            // --- Live Vote Notification (sliding horizontal track) ---
+            const addLiveVoteNotification = useCallback((msg) => {
+                const newNotification = { id: Date.now(), message: msg };
+                setLiveVoteNotifications(prev => [...prev, newNotification]); // Add to the end
+            }, []);
+            
+            // Effect to manage the scrolling of live vote notifications
+            useEffect(() => {
+                const track = document.getElementById('live-vote-track-inner');
+                if (track) {
+                    track.innerHTML = ''; // Clear existing children to prevent duplicates on re-renders
+                    liveVoteNotifications.forEach(notification => {
+                        const slide = document.createElement('div');
+                        slide.className = 'live-vote-slide';
+                        slide.textContent = notification.message;
+                        track.appendChild(slide);
+                    });
+                    // Reset animation by re-applying it
+                    track.style.animation = 'none';
+                    void track.offsetWidth; // Trigger reflow
+                    track.style.animation = null; // Re-enable animation
+                }
+            }, [liveVoteNotifications]);
+
+
+            // Initial load effects
+            useEffect(() => {
+                addNotification("Welcome to Mooch Runner!", "success");
+                addNotification("Connect your wallet to begin!", "info");
+            }, [addNotification]);
+
+            // Mock functions for UI interactions
+            const connectWallet = () => {
+                setIsLoading(true);
+                setTimeout(() => {
+                    setAccount("0xMockAccount1234567890abcdefABCDEF");
+                    addNotification("Mock Wallet Connected!", "success");
+                    setMessage(""); // Clear main message
+                    setIsLoading(false);
+                    setShowWalletModal(false); // Close modal on connect
+                }, 1000);
+            };
+
+            const disconnectWallet = () => {
+                setIsLoading(true);
+                setTimeout(() => {
+                    setAccount(null);
+                    setMessage("Wallet disconnected (mock).");
+                    addNotification("Mock Wallet Disconnected!", "warning");
+                    setIsLoading(false);
+                    setActiveTab('home'); // Go back to home after disconnect
+                    setShowWalletModal(false); // Close modal on disconnect
+                }, 1000);
+            };
+
+            // Timer countdown effect (remains for mocked time display)
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    setTimeRemaining(prev => {
+                        if (prev > 0) return prev - 1;
+                        // When timer hits 0, simulate cycle end if it's voting/prep
+                        if ((currentCycleStatus === "Voting" || currentCycleStatus === "Prep") && !isLoading) {
+                            setTimeout(() => handleEndCycle(), 1000); // Trigger end cycle shortly after timer hits 0
+                        }
+                        return 0;
+                    });
+                }, 1000);
+
+                return () => clearInterval(timer);
+            }, [timeRemaining, currentCycleStatus, isLoading]);
+
+            // --- IPFS Upload Handling (UI only) ---
+            const handleImageChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    // Check file size (e.g., 2MB limit)
+                    if (file.size > 2 * 1024 * 1024) {
+                        addNotification("Image size too large (max 2MB).", "error");
+                        setMemeImage(null);
+                        setMemeImagePreview(null);
+                        return;
+                    }
+                    setMemeImage(file);
+                    setMemeImagePreview(URL.createObjectURL(file)); // Create a preview URL
+                } else {
+                    setMemeImage(null);
+                    setMemeImagePreview(null);
+                }
+            };
+
+            const uploadToIPFS = async (file) => {
+                addNotification("Uploading image to IPFS (mock)...", "info");
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const mockText = encodeURIComponent(memeName.substring(0, 10) || 'Meme Upload');
+                        // Use 300x200 for uploaded memes by default
+                        const mockHash = `300x200/00FF00/000000?text=${mockText}`; // AI-style image
+                        addNotification("Image uploaded to IPFS (mock)!", "success");
+                        resolve(mockHash);
+                    }, 1500);
+                });
+            };
+
+            const approveMooch = () => {
+                setIsLoading(true);
+                setMessage("Simulating $MOOCH token approval...");
+                addNotification("Simulating $MOOCH approval...", "info");
+                setTimeout(() => {
+                    setMessage("Mock: $MOOCH token approval assumed.");
+                    addNotification("Mock Approval Confirmed!", "success");
+                    setIsLoading(false);
+                }, 1500);
+            };
+
+            const handleSubmitMeme = async (e) => {
+                e.preventDefault();
+                if (!isMemeSubmissionOpen) {
+                    addNotification("Meme submission is currently closed.", "error");
+                    return;
+                }
+                if (!memeImage || memeTicker.trim() === '' || memeName.trim() === '') {
+                    addNotification("Submission failed: Missing required fields or image.", "error");
+                    return;
+                }
+                if (mockTokenBalance < MEME_SUBMISSION_COST) {
+                    addNotification(`Not enough $MOOCH! Submission costs ${MEME_SUBMISSION_COST} $MOOCH. You have ${mockTokenBalance}.`, "error");
+                    return;
+                }
+
+                setIsSubmittingMeme(true);
+                addNotification("Meme submission in progress...", "info");
+                
+                const ipfsHash = await uploadToIPFS(memeImage); 
+                setTimeout(() => {
+                    addNotification("Meme submitted successfully!", "success");
+                    setShowMoochdMemeAnimation(true);
+                    setTimeout(() => setShowMoochdMemeAnimation(false), 3500);
+
+                    const newMeme = {
+                        id: activeMemes.length > 0 ? Math.max(...activeMemes.map(m => m.id)) + 1 : 1, 
+                        ticker: memeTicker.toUpperCase(),
+                        name: memeName,
+                        ipfsHash: ipfsHash, 
+                        xLink: memeXLink,
+                        votes: 0,
+                        active: true,
+                        views: 0, 
+                        submissionDate: new Date().toISOString().slice(0, 10),
+                        submitter: account, 
+                        moochUsedToVote: `${MEME_SUBMISSION_COST} $MOOCH`,
+                        description: memeDescription
+                    };
+                    setActiveMemes(prevMemes => [...prevMemes, newMeme]); 
+                    setGameStats(prev => ({...prev, totalMemes: prev.totalMemes + 1})); 
+                    setMockTokenBalance(prev => prev - MEME_SUBMISSION_COST); 
+                    setMemeTicker('');
+                    setMemeName('');
+                    setMemeImage(null);
+                    setMemeImagePreview(null);
+                    setMemeXLink('');
+                    setMemeDescription('');
+                    setIsSubmittingMeme(false);
+                    setMessage("");
+                }, 2000);
+            };
+
+            const handleVoteForMeme = (memeId, numVotes = 1) => {
+                if (!isVotingOpen) {
+                    addNotification("Meme voting is currently closed.", "error");
+                    return;
+                }
+                if (numVotes <= 0 || isNaN(numVotes)) {
+                    addNotification("Please enter a valid number of votes (at least 1).", "error");
+                    return;
+                }
+                if (mockTokenBalance < numVotes) {
+                    addNotification(`Not enough $MOOCH! You need ${numVotes} $MOOCH but have ${mockTokenBalance}.`, "error");
+                    return;
+                }
+
+                setIsLoading(true);
+                addNotification(`Casting ${numVotes} votes for meme #${memeId}...`, "info");
+                setVotedMemeId(memeId); 
+
+                setTimeout(() => {
+                    addNotification(`Successfully cast ${numVotes} votes for meme #${memeId}!`, "success");
+                    addLiveVoteNotification(`${numVotes} votes for "${activeMemes.find(m => m.id === memeId)?.name}"`);
+                    setActiveMemes(prevMemes => 
+                        prevMemes.map(meme => 
+                            meme.id === memeId ? { ...meme, votes: meme.votes + numVotes } : meme
+                        )
+                    );
+                    setMockTokenBalance(prev => prev - numVotes);
+                    setGameStats(prev => ({...prev, totalVotes: prev.totalVotes + numVotes}));
+
+                    setVoteHistory(prev => [
+                        { id: Date.now(), memeId, memeName: activeMemes.find(m => m.id === memeId)?.name, votes: numVotes, moochSpent: numVotes, timestamp: new Date().toLocaleString() },
+                        ...prev
+                    ]);
+
+                    setShowMoochedAnimation(true);
+                    setTimeout(() => setShowMoochedAnimation(false), 3500);
+
+                    const votedMeme = activeMemes.find(m => m.id === memeId);
+                    if (votedMeme) {
+                        setActivityFeed(prev => [
+                            { id: Date.now(), user: account, action: `voted ${numVotes}x for`, memeName: votedMeme.name, timestamp: "just now" },
+                            ...prev
+                        ].slice(0, 10));
+                    }
+
+                    setIsLoading(false);
+                    setVotedMemeId(null); 
+                    setMessage(""); 
+                }, 1000);
+            };
+
+            const handleEndCycle = () => {
+                if (!isEndCyclePossible && timeRemaining > 0) {
+                     addNotification("Cycle cannot be ended yet. Wait for Prep phase to conclude.", "warning");
+                     return;
+                }
+                setIsLoading(true);
+                addNotification("Attempting to end cycle...", "info");
+                setCurrentCycleStatus("Processing...");
+                setTimeout(() => {
+                    addNotification("Cycle ended! New winner announced and new cycle started.", "success");
+                    setCurrentCycleStatus("Submission");
+                    setTimeRemaining(3600 * 24);
+                    
+                    const winner = [...activeMemes].sort((a,b) => b.votes - a.votes)[0];
+                    if (winner) {
+                        setLastMemeOfTheDay({
+                            ...winner,
+                            ipfsHash: winner.ipfsHash.replace('200x150', '400x300'),
+                            votes: winner.votes,
+                            submitter: winner.submitter,
+                            currentMC: (Math.random() * 50 + 10).toFixed(1) + "B $",
+                            ath: (Math.random() * 10000 + 100).toFixed(0) + " $",
+                            totalSupply: (Math.random() * 1000).toFixed(0) + "T tokens",
+                            moochUsedToVote: "1 $MOOCH"
+                        });
+                        setActiveMemes([]);
+                        setTrendingMemes([]);
+                    } else {
+                        setLastMemeOfTheDay(null);
+                        setActiveMemes([]);
+                        setTrendingMemes([]);
+                    }
+                    setGameStats(prev => ({...prev, cyclesCompleted: prev.cyclesCompleted + 1}));
+                    setIsLoading(false);
+                    setMessage("");
+                }, 3000);
+            };
+
+            const handleClaimTestnetTokens = () => {
+                setIsClaimingTokens(true);
+                addNotification("Claiming tokens...", "info");
+                setTimeout(() => {
+                    setMockTokenBalance(prev => prev + 1000);
+                    addNotification("1000 $MOOCH tokens claimed!", "success");
+                    setIsClaimingTokens(false);
+                }, 1500);
+            };
+
+            // Phase change for testing
+            const togglePhase = () => {
+                if (currentCycleStatus === "Submission") {
+                    setCurrentCycleStatus("Voting");
+                    setTimeRemaining(3600 * 2 + 10);
+                    addNotification("Phase changed to Voting!", "info");
+                } else if (currentCycleStatus === "Voting") {
+                    setCurrentCycleStatus("Prep");
+                    setTimeRemaining(10);
+                    addNotification("Phase changed to Prep!", "info");
+                } else {
+                    setCurrentCycleStatus("Submission");
+                    setTimeRemaining(3600 * 4 + 10);
+                    addNotification("Phase changed to Submission!", "info");
+                }
+            };
+
+
+            // Determine if an action is available based on current phase (mocked)
+            const isMemeSubmissionOpen = currentCycleStatus === "Submission" && timeRemaining > 0;
+            const isVotingOpen = currentCycleStatus === "Voting" && timeRemaining > 0;
+            const isPrepPhase = currentCycleStatus === "Prep"; 
+            const isEndCyclePossible = currentCycleStatus === "Prep" && timeRemaining <= 0; 
+
+            // State for vote history
+            const [voteHistory, setVoteHistory] = useState([]);
+
+            // Mock Mooch Token Price for $ calculation
+            const MOOCH_PRICE_USD = 0.05; // 1 $MOOCH = $0.05
+
+            // --- Bouncing Image Animation Logic (for inactive phases) ---
+            const bouncingImageRef = useRef(null);
+            const animationContainerRef = useRef(null);
+
+            useEffect(() => {
+                const img = bouncingImageRef.current;
+                const container = animationContainerRef.current;
+                if (!img || !container) return;
+
+                let posX = 0;
+                let posY = 0;
+                let directionX = 1;
+                let directionY = 1;
+                const speed = 2;
+
+                img.style.transform = `translate(0px, 0px)`;
+
+                const animate = () => {
+                    if (!img || !container || (isMemeSubmissionOpen || isVotingOpen)) {
+                        return;
+                    }
+
+                    const containerWidth = container.clientWidth;
+                    const containerHeight = container.clientHeight;
+                    const imgWidth = img.offsetWidth;
+                    const imgHeight = img.offsetHeight;
+
+                    posX += directionX * speed;
+                    posY += directionY * speed;
+
+                    if (posX + imgWidth > containerWidth) {
+                        directionX = -1;
+                        posX = containerWidth - imgWidth;
+                    } else if (posX < 0) {
+                        directionX = 1;
+                        posX = 0;
+                    }
+
+                    if (posY + imgHeight > containerHeight) {
+                        directionY = -1;
+                        posY = containerHeight - imgHeight;
+                    } else if (posY < 0) {
+                        directionY = 1;
+                        posY = 0;
+                    }
+
+                    img.style.transform = `translate(${posX}px, ${posY}px)`;
+                    requestAnimationFrame(animate);
+                };
+
+                if (!isMemeSubmissionOpen && !isVotingOpen) {
+                    animate();
+                }
+
+            }, [isMemeSubmissionOpen, isVotingOpen]);
+
+
+            // Conditional rendering for active sections
+            const renderContent = () => {
+                switch (activeTab) {
+                    case 'home':
+                        return (
+                            <>
+                                <p className="text-xl font-bold text-green-300 text-shadow-[0_0_5px_rgba(0,255,0,0.7)] mb-4">When accident launch happens, we mooch.</p>
+
+                                {/* Last Meme of the Day Gallery */}
+                                <div className="app-section">
+                                    <h2>🏆 Last Meme of the Day</h2>
+                                    {lastMemeOfTheDay ? (
+                                        <div className="text-center">
+                                            <p className="text-lg font-bold text-green-300">{lastMemeOfTheDay.name}</p>
+                                            <p className="text-sm">Ticker: {lastMemeOfTheDay.ticker}</p>
+                                            <img
+                                                src={`https://placehold.co/${lastMemeOfTheDay.ipfsHash}`} 
+                                                alt={lastMemeOfTheDay.name}
+                                                className="mt-4 mx-auto max-h-64 rounded-lg border border-green-700 animate-pulse-light cursor-pointer"
+                                                onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/003300/00FF00?text=Image+Error"; }}
+                                                onClick={() => { setSelectedMeme(lastMemeOfTheDay); setShowMemeDetail(true); }}
+                                            />
+                                            {lastMemeOfTheDay.xLink && (
+                                                <a href={lastMemeOfTheDay.xLink} target="_blank" rel="noopener noreferrer" className="modal-link mt-2 inline-block text-lg">
+                                                    View on X
+                                                </a>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-lg text-gray-300">No meme determined yet for the last cycle (mock data).</p>
+                                    )}
+                                </div>
+
+                                {/* Game Statistics */}
+                                <div className="app-section">
+                                    <h2>📊 Game Statistics</h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+                                        <p><span className="text-white">Total Memes:</span> {gameStats.totalMemes}</p>
+                                        <p><span className="text-white">Total Votes:</span> {gameStats.totalVotes}</p>
+                                        <p><span className="text-white">Participants:</span> {gameStats.activeParticipants}</p>
+                                        <p><span className="text-white">Cycles Done:</span> {gameStats.cyclesCompleted}</p>
+                                    </div>
+                                </div>
+
+                                {/* Current Top 3 Tokens */}
+                                <div className="app-section">
+                                    <h2>🔝 Top Tokens</h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                        {topTokens.map((token, index) => (
+                                            <div key={index} className="flex flex-col items-center p-4 bg-black bg-opacity-50 rounded-lg border border-0f0 shadow-md">
+                                                <img src={`https://placehold.co/${token.logo}`} alt={`${token.ticker} Logo`} className="w-16 h-16 rounded-full border border-0f0 mb-2 glow-image-thumb" />
+                                                <p className="text-xl font-bold">{token.ticker}</p>
+                                                <p className="text-sm text-gray-300">MC: {token.mc}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Phase Change Button for Testing */}
+                                <div className="app-section">
+                                    <button
+                                        onClick={togglePhase}
+                                        className="vote-btn w-auto px-8 py-3"
+                                    >
+                                        Toggle Phase (For Testing)
+                                    </button>
+                                </div>
+                            </>
+                        );
+                    case 'submit':
+                        return (
+                            <div className="app-section w-full max-w-2xl mx-auto">
+                                <h2>⬆️ Submit Your Meme</h2>
+                                <p className="text-green-100 mb-6">Unleash your creativity! Submit your most epic meme to compete for votes and glory.</p>
+                                { !isMemeSubmissionOpen ? (
+                                    <div ref={animationContainerRef} className="inactive-phase-container">
+                                        <img ref={bouncingImageRef} src="https://imgur.com/zPo1ir5.png" alt="Bouncing Icon" className="bouncing-image" />
+                                        <p className="text-2xl font-bold text-red-400 z-20">Submission is CLOSED!</p>
+                                        <p className="text-xl text-yellow-300 z-20">Go Vote or Check Trending Memes!</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-green-100 mb-4">Cost to submit: <span className="text-yellow-300 font-bold">{MEME_SUBMISSION_COST} $MOOCH</span></p>
+                                        <form onSubmit={handleSubmitMeme} className="space-y-4 text-left">
+                                            <div className="form-group">
+                                                <label htmlFor="memeTicker">Meme Ticker:</label>
+                                                <input
+                                                    type="text"
+                                                    id="memeTicker"
+                                                    value={memeTicker}
+                                                    onChange={(e) => setMemeTicker(e.target.value)}
+                                                    placeholder="e.g., AVAX, BTC"
+                                                    required
+                                                    disabled={isSubmittingMeme}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="memeName">Meme Title:</label>
+                                                <input
+                                                    type="text"
+                                                    id="memeName"
+                                                    value={memeName}
+                                                    onChange={(e) => setMemeName(e.target.value)}
+                                                    placeholder="e.g., Diamond Hands"
+                                                    required
+                                                    disabled={isSubmittingMeme}
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="memeImage">Meme Image (PNG/JPG, max 2MB):</label>
+                                                <input
+                                                    type="file"
+                                                    id="memeImage"
+                                                    accept="image/png, image/jpeg"
+                                                    onChange={handleImageChange}
+                                                    required
+                                                    disabled={isSubmittingMeme}
+                                                />
+                                                {memeImagePreview && (
+                                                    <img src={memeImagePreview} alt="Meme Preview" className="file-preview mx-auto" />
+                                                )}
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="memeDescription">Description (optional):</label>
+                                                <textarea
+                                                    id="memeDescription"
+                                                    value={memeDescription}
+                                                    onChange={(e) => setMemeDescription(e.target.value)}
+                                                    placeholder="A brief description of your meme..."
+                                                    disabled={isSubmittingMeme}
+                                                    rows="3"
+                                                ></textarea>
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="memeXLink">Optional X (Twitter) Link:</label>
+                                                <input
+                                                    type="url"
+                                                    id="memeXLink"
+                                                    value={memeXLink}
+                                                    onChange={(e) => setMemeXLink(e.target.value)}
+                                                    placeholder="e.g., https://twitter.com/..."
+                                                    disabled={isSubmittingMeme}
+                                                />
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmittingMeme || mockTokenBalance < MEME_SUBMISSION_COST}
+                                                className="vote-btn w-full"
+                                            >
+                                                {isSubmittingMeme ? "Submitting (Mock)..." : `Submit Meme (${MEME_SUBMISSION_COST} $MOOCH)`}
+                                            </button>
+                                        </form>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    case 'vote':
+                        return (
+                            <div className="app-section">
+                                <h2>✨ Vote for Memes</h2>
+                                {!isVotingOpen ? (
+                                    <div ref={animationContainerRef} className="inactive-phase-container">
+                                        <img ref={bouncingImageRef} src="https://imgur.com/zPo1ir5.png" alt="Bouncing Icon" className="bouncing-image" />
+                                        <p className="text-2xl font-bold text-red-400 z-20">Voting is CLOSED!</p>
+                                        <p className="text-xl text-yellow-300 z-20">Go Submit or Check Trending Memes!</p>
+                                    </div>
+                                ) : (
+                                    activeMemes.length > 0 ? (
+                                        <div className="voting-grid">
+                                            {activeMemes.map((meme, index) => (
+                                                <div 
+                                                    key={meme.id !== undefined ? meme.id : index} 
+                                                    className={`meme-card ${votedMemeId === meme.id ? 'voted-pulse' : ''}`}
+                                                >
+                                                    <img 
+                                                        src={`https://placehold.co/${meme.ipfsHash}`} 
+                                                        alt={meme.name} 
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x150/003300/00FF00?text=Image+Error"; }}
+                                                        onClick={() => { setSelectedMeme(meme); setShowMemeDetail(true); }}
+                                                    />
+                                                    <div>
+                                                        <p>{meme.name}</p>
+                                                        <p>Ticker: {meme.ticker}</p>
+                                                        <p>Votes: <strong id={`votes-${meme.id}`}>{meme.votes.toString()}</strong></p>
+                                                        <p>Views: {meme.views.toString()}</p>
+                                                        <p>Submitted: {meme.submissionDate}</p>
+                                                        {isVotingOpen && (
+                                                            <div className="flex flex-col items-center mt-2">
+                                                                <label htmlFor={`num-votes-${meme.id}`} className="text-sm mb-1">Votes (<span className="text-white">1 $MOOCH/vote</span>):</label>
+                                                                <input 
+                                                                    type="number" 
+                                                                    id={`num-votes-${meme.id}`} 
+                                                                    min="1" 
+                                                                    defaultValue="1" 
+                                                                    className="w-24 p-1 text-center bg-black border border-0f0 rounded-md text-0f0 text-shadow-[0_0_2px_#0f0] focus:outline-none focus:border-white focus:shadow-[inset_0_0_5px_rgba(0,255,0,0.8)]"
+                                                                    onClick={e => e.stopPropagation()} // Prevent modal from opening when clicking input
+                                                                />
+                                                                <button
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        const numVotesInput = document.getElementById(`num-votes-${meme.id}`);
+                                                                        const numVotes = parseInt(numVotesInput.value, 10);
+                                                                        handleVoteForMeme(meme.id, numVotes); 
+                                                                    }} 
+                                                                    disabled={isLoading || (mockTokenBalance < 1)} /* Disable if no mooch to vote */
+                                                                    className="vote-btn"
+                                                                >
+                                                                    ⬆️ Vote ({parseInt(document.getElementById(`num-votes-${meme.id}`)?.value || 1, 10)} $MOOCH)
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-lg text-gray-300">No memes submitted for this cycle yet (mock data).</p>
+                                    )
+                                )}
+                            </div>
+                        );
+                    case 'balance':
+                        return (
+                            <div className="app-section w-full max-w-xl mx-auto">
+                                <h2>📊 Your $MOOCH Balance</h2>
+                                <p className="text-green-100 mb-4 text-xl">This is your off-chain testnet $MOOCH balance.</p>
+                                <p className="text-4xl font-bold text-green-300 mb-6 text-shadow-[0_0_8px_rgba(0,255,0,0.7)]">{mockTokenBalance} $MOOCH</p>
+                                <button
+                                    onClick={handleClaimTestnetTokens}
+                                    disabled={isClaimingTokens}
+                                    className="vote-btn w-full mb-4"
+                                >
+                                    {isClaimingTokens ? "Claiming..." : "Claim 1000 $MOOCH (Off-Chain Mock)"}
+                                </button>
+                                <button
+                                    onClick={approveMooch}
+                                    disabled={isLoading}
+                                    className="vote-btn w-full"
+                                >
+                                    {isLoading ? "Processing..." : "Simulate Approval (Mock)"}
+                                </button>
+
+                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">Vote History</h3>
+                                {voteHistory.length > 0 ? (
+                                    <div className="text-left max-h-60 overflow-y-auto border border-0f0 p-2 rounded">
+                                        {voteHistory.map(record => (
+                                            <p key={record.id} className="mb-1 text-sm">
+                                                <span className="text-white">{record.timestamp}:</span> Voted <span className="text-0ff">{record.votes}x</span> for <span className="text-green-300">"{record.memeName}"</span> (<span className="text-yellow-300">{record.moochSpent} $MOOCH (~${(record.moochSpent * MOOCH_PRICE_USD).toFixed(2)})</span>)
+                                            </p>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-300">No vote history yet.</p>
+                                )}
+                            </div>
+                        );
+                    case 'trending':
+                        return (
+                            <div className="app-section">
+                                <h2>📈 Trending Memes</h2>
+                                {trendingMemes.length > 0 ? (
+                                    <div className="voting-grid">
+                                        {trendingMemes.map((meme, index) => (
+                                            <div 
+                                                key={meme.id !== undefined ? meme.id : index} 
+                                                className="meme-card"
+                                                onClick={() => { setSelectedMeme(meme); setShowMemeDetail(true); }}
+                                            >
+                                                <img 
+                                                    src={`https://placehold.co/${meme.ipfsHash}`} 
+                                                    alt={meme.name} 
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x150/003300/00FF00?text=Image+Error"; }}
+                                                />
+                                                <div>
+                                                    <p>{meme.name}</p>
+                                                    <p>Ticker: {meme.ticker}</p>
+                                                    <p>Votes: <strong>{meme.votes.toString()}</strong></p>
+                                                    <p>Views: {meme.views.toString()}</p>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleVoteForMeme(meme.id); }} 
+                                                    disabled={!isVotingOpen || isLoading || (mockTokenBalance < 1)}
+                                                    className="vote-btn"
+                                                >
+                                                    ⬆️ Vote
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-lg text-gray-300">No memes currently trending (mock data).</p>
+                                )}
+
+                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">Recent Activity</h3>
+                                {activityFeed.length > 0 ? (
+                                    <div className="text-left max-h-60 overflow-y-auto border border-0f0 p-2 rounded">
+                                        {activityFeed.map(activity => (
+                                            <p key={activity.id} className="mb-1 text-sm">
+                                                <span className="text-white">{activity.timestamp}:</span> User <span className="text-0ff">{activity.user.substring(0, 8)}...</span> {activity.action} <span className="text-green-300">"{activity.memeName}"</span>
+                                            </p>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-300">No recent activity.</p>
+                                )}
+                            </div>
+                        );
+                    case 'about':
+                        return (
+                            <div className="app-section w-full max-w-2xl mx-auto">
+                                <h2>ℹ️ About Mooch Runner</h2>
+                                <p className="text-green-100 mb-4">
+                                    Mooch Runner is a decentralized application (dApp) for meme enthusiasts to submit, vote on, and celebrate the best memes! 
+                                    This version is a UI demonstration with mock data and functionality.
+                                </p>
+                                <p className="text-green-100 mb-4">
+                                    Participants can submit memes during the submission phase, and then vote for their favorite memes and tokens ($MOOCH) during the voting phase. 
+                                    At the end of each cycle, a winning meme is declared!
+                                </p>
+                                <h3 className="text-2xl mt-6 mb-4 flex items-center justify-center gap-2">
+                                    🚀 How It Works
+                                </h3>
+                                <ul className="text-left list-disc list-inside space-y-2 text-green-100">
+                                    <li><strong>1. Connect Wallet:</strong> Join with MetaMask or other EVM wallets</li>
+                                    <li><strong>2. Submit Memes:</strong> Upload the funniest memes to compete</li>
+                                    <li><strong>3. Vote Daily:</strong> Support your favorite memes and creators</li>
+                                    <li><strong>4. Earn $MOOCH:</strong> Top memes win and earn real rewards</li>
+                                </ul>
+
+                                <h3 className="text-2xl mt-6 mb-4 flex items-center justify-center gap-2">
+                                    🤝 Community
+                                </h3>
+                                <div className="flex justify-center items-center space-x-6">
+                                    <a href="https://x.com/MoochonAvax" target="_blank" rel="noopener noreferrer" className="text-green-300 hover:text-white transition-colors duration-200">
+                                        {/* Twitter (X) Logo SVG */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 drop-shadow-[0_0_8px_#0f0]">
+                                            <path d="M18.244 2.25h3.308l-7.227 8.260 8.017 11.740h-6.765l-6.23-9.110-3.328 9.110h-3.308l7.227-8.260-8.017-11.740h6.765l6.23 9.110zM12 1.5l-8 11.5 8 10.5 8-10.5-8-11.5zM12 2.5l7 10 7-9 7 9-7 10-7-9-7 10zM12 3.5l6 9.5 6-8.5 6 8.5-6 9.5-6-8.5-6 9.5zM12 4.5l5 8.5 5-7.5 5 7.5-5 8.5-5-7.5-5 8.5z"/>
+                                            <path d="M18.244 2.25h3.308l-7.227 8.260 8.017 11.740h-6.765l-6.23-9.110-3.328 9.110h-3.308l7.227-8.260-8.017-11.740h6.765l6.23 9.110z" />
+                                        </svg>
+                                    </a>
+                                    <a href="https://t.me/themoochonavax" target="_blank" rel="noopener noreferrer" className="text-green-300 hover:text-white transition-colors duration-200">
+                                        {/* Telegram Logo SVG (simplified) */}
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 drop-shadow-[0_0_8px_#0f0]">
+                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6.65 8.59l-2.43 11.45c-.173.815-.662.982-1.315.603l-3.955-2.903-1.918 1.84c-.21.203-.38.36-.75.36l.2-.953 1.89-6.02L7.87 9.155c-.75-.68-.16-1.04.57-.79l10.37 4.025c.67.27.18.5-.14.63z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                                <p className="text-green-100 text-sm italic mt-6">
+                                    Disclaimer: All blockchain interactions, token values, and image storage are simulated in this demo.
+                                </p>
+                            </div>
+                        );
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <>
+                    {/* Notifications Display */}
+                    <div id="notifications-container">
+                        {/* Notifications rendered here */}
+                    </div>
+
+                    {/* "You've been Mooch'd!" animation overlay (for voting) */}
+                    {showMoochedAnimation && (
+                        <div id="mooched-animation-container" className="mooched-overlay">
+                            <h2 className="mooched-message">YOU'VE BEEN MOOCH'D!</h2>
+                        </div>
+                    )}
+
+                    {/* "You have Mooch'd a meme" animation overlay (for submission) */}
+                    {showMoochdMemeAnimation && (
+                        <div id="moochd-meme-animation-container" className="mooched-meme-overlay">
+                            <h2 className="mooched-meme-message">YOU HAVE MOOCH'D A MEME!</h2>
+                        </div>
+                    )}
+
+                    {/* Wallet Settings Modal (conditionally rendered) */}
+                    {showWalletModal && (
+                        <WalletSettingsModal 
+                            account={account} 
+                            chainId={chainId} 
+                            onDisconnect={disconnectWallet} 
+                            onClose={() => setShowWalletModal(false)} 
+                        />
+                    )}
+
+                    {/* The entire application UI is rendered here */}
+                    <header>
+                        <div className="header-logo-title-wrap">
+                            <img src="https://imgur.com/roCgcDm.png" alt="Mooch Runner Logo" />
+                            <h1>MOOCH RUNNER</h1>
+                            <p class="header-tagline">Vote • Submit • Earn $MOOCH</p>
+                        </div>
+                        {/* Header Timer & Phase Display */}
+                        <div class="header-timer-info">
+                            <p>Phase: <span className="text-green-300">{currentCycleStatus}</span></p>
+                            <div className="timer-box">
+                                <div className="clock">
+                                    <FlipDisplay value={String(hours).padStart(2, '0')} />
+                                    <span className="text-0f0 text-lg font-orbitron">:</span>
+                                    <FlipDisplay value={String(minutes).padStart(2, '0')} />
+                                    <span className="text-0f0 text-lg font-orbitron">:</span>
+                                    <FlipDisplay value={String(seconds).padStart(2, '0')} />
+                                </div>
+                            </div>
+                        </div>
+                        {/* User Profile Icon */}
+                        <div class="profile-icon" onClick={() => setShowWalletModal(true)}>M</div>
+                    </header>
+
+                    <div id="live-vote-track-container">
+                        <div className="live-vote-track-inner">
+                            {liveVoteNotifications.map(notification => (
+                                <div key={notification.id} className="live-vote-slide">
+                                    {notification.message}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <nav>
+                        {['HOME', 'VOTE', 'SUBMIT MEME', 'BALANCE', 'TRENDING', 'ABOUT'].map(label => (
+                            <button
+                                key={label}
+                                onClick={() => setActiveTab(label.toLowerCase())}
+                                className={`font-bold py-3 px-6 rounded-full transition-all duration-300 ${activeTab.toUpperCase() === label ? 'active-nav' : ''}`}
+                            >
+                                {label === 'BALANCE' ? 'TRADE' : label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <main>
+                        {!account ? (
+                            <div className="app-section w-full max-w-md text-center mx-auto">
+                                <h2 className="mb-6">CONNECT WALLET</h2>
+                                <p className="text-green-100 mb-6">Connect your wallet to participate in the Mooch Runner DApp.</p>
+                                <button
+                                    onClick={connectWallet}
+                                    className="vote-btn w-full"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? "Connecting..." : "Connect Wallet (Mock)"}
+                                </button>
+                                {message && <p className="mt-4 text-sm text-green-300">{message}</p>}
+                            </div>
+                        ) : (
+                            <div className="w-full max-w-full">
+                                {/* The rest of the content based on activeTab */}
+                                {renderContent()}
+                            </div>
+                        )}
+                    </main>
+
+                    <footer>
+                        &copy; 2025 Mooch Runner | Built for Degens by Degens 🧠
+                    </footer>
+                </>
+            );
+        };
+
+        // Initial render of the App component into the #root div
+        ReactDOM.render(<App />, document.getElementById('root-container'));
+    </script>
+</body>
+</html>
