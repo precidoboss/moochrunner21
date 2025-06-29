@@ -1,1871 +1,1501 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mooch Runner</title>
-    <!-- Google Fonts - Share Tech Mono (for general text) -->
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <!-- Google Fonts - Orbitron (for clock timer) -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN (Still useful for some utility classes, but primary styling is custom) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // FIXED: Corrected import syntax
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
+import { CheckCircle, XCircle, BarChart2, Lightbulb, Search, ExternalLink, ScrollText, DollarSign, Wallet, Verified, TrendingUp, ArrowLeft, Gem, RefreshCw, HandCoins, ChevronRight, TrendingDown, Clock, Scale, Twitter, Users } from "lucide-react";
 
-    <style>
-        /* Base styles (as per your full app) */
-        * { box-sizing: border-box; }
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow-x: hidden; /* Prevent horizontal scrolling */
-        }
-        body {
-            font-family: 'Share Tech Mono', monospace;
-            background-color: #000;
-            background-image: radial-gradient(#0f0 1px, #000 1px);
-            background-size: 20px 20px;
-            color: #0f0; /* Default text color to green */
-            display: grid;
-            grid-template-rows: auto auto 1fr auto;
-            grid-template-columns: 200px 1fr;
-            grid-template-areas:
-                "header header"
-                "live-vote-track live-vote-track"
-                "nav main"
-                "footer footer";
-            min-height: 100vh;
-        }
+// Constants
+const AVAX_USD_PRICE = 19; // 1 AVAX is $19
+const MOOCH_USD_PRICE = 0.00001541; // 1 Mooch is $0.00001541
+const SIMULATED_GAS_FEE_AVAX = 0.002; // Fixed simulated gas fee in AVAX
+const PRICE_IMPACT_FACTOR_TRADE = 0.00005; // Base factor for price change on trade
+const SHILL_SCORE_INCREMENT = 5; // How much shill score increases per 'shill' action
 
-        header {
-            grid-area: header;
-            text-align: center;
-            padding: 1rem;
-            background: #001100;
-            border-bottom: 2px solid #0f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
+// Helper to generate a dummy transaction hash
+const generateTxHash = () => {
+    return '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+};
 
-        header .header-logo-title-wrap {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-grow: 1;
-            min-width: 150px;
-        }
+// --- ProjectDetailsModal Component ---
+const ProjectDetailsModal = ({ project, onClose, onBurnMooch, onSimulatePresale, onContribute, userHasMoochNFT, onSendForReview, onAcceptReview }) => {
+  const [userContributedAmount, setUserContributedAmount] = useState(0);
+  const [contributionAmountInput, setContributionAmountInput] = useState("");
+  const [showHolders, setShowHolders] = useState(false); // State to toggle holders section
 
-        header img {
-            height: 70px; /* Adjusted height for better fit */
-            filter: drop-shadow(0 0 8px rgba(0,255,0,0.7));
-        }
-        @keyframes header-glow {
-            0%, 100% { text-shadow: 0 0 5px #0f0, 0 0 10px #0f0, 0 0 20px #0f0; }
-            50% { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0f0; }
-        }
-        header h1 {
-            font-size: 2.5rem;
-            text-shadow: 0 0 5px #0f0, 0 0 10px #0f0;
-            animation: header-glow 2s infinite alternate ease-in-out;
-            color: #0f0;
-            margin: 0;
-            line-height: 1;
-        }
-        header .header-tagline {
-            font-size: 1rem;
-            text-shadow: 0 0 3px #0f0;
-        }
+  // Calculate token holder allocations - MOVED OUTSIDE CONDITIONAL RENDER
+  // Hooks must be called in the same order on every render.
+  const calculateHolderAllocations = useCallback(() => {
+      if (!project || !project.circulatingSupply || !project.tokenAllocation) return [];
 
-        /* Header Timer & Phase Display */
-        .header-timer-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 3px; /* Smaller gap */
-            font-size: 0.75rem; /* Smaller base font */
-            white-space: nowrap;
-            position: absolute; /* Adjusted positioning */
-            left: 1rem; /* Aligned to the left */
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .header-timer-info .timer-box {
-            padding: 3px 8px; /* Further reduced padding */
-            background: #000;
-            border-radius: 6px; /* Smaller border radius */
-            box-shadow: 0 0 6px #0f0, 0 0 10px #0f0 inset; /* Smaller shadow */
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .header-timer-info .clock {
-            display: flex;
-            gap: 2px; /* Very small gap */
-            align-items: center;
-        }
-        .header-timer-info .flip-card {
-            width: 30px; /* Smallest flip card width */
-            height: 40px; /* Smallest flip card height */
-            font-size: 1rem; /* Smallest font size */
-            line-height: 40px;
-            box-shadow: 0 0 3px rgba(0, 255, 0, 0.7), 0 0 5px rgba(255, 255, 255, 0.3); /* Smallest shadow */
-        }
-        .header-timer-info .clock span {
-            font-size: 1.2rem; /* Smallest colon size */
-            color: #0f0;
-        }
-        .header-timer-info p {
-            margin: 0;
-            font-size: 0.8rem; /* Smallest text size */
-            text-shadow: 0 0 3px #0f0;
-        }
+      const totalTokens = project.circulatingSupply;
+      let allocatedPercentage = 0;
+      const allocations = [];
 
-        /* Profile Icon (top right of header) */
-        .profile-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: #000;
-            border: 2px solid #0f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem; /* Reduced font size for 'M' */
-            font-weight: bold;
-            color: #0f0;
-            filter: drop-shadow(0 0 8px rgba(0,255,0,0.7));
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            flex-shrink: 0;
-            z-index: 1005;
-            position: absolute; /* Adjusted positioning */
-            right: 1rem; /* Aligned to the right */
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .profile-icon:hover {
-            transform: translateY(-50%) scale(1.05);
-            box-shadow: 0 0 15px #0f0;
-        }
+      // Add fixed allocations
+      project.tokenAllocation.forEach(alloc => {
+          const amount = (alloc.percentage / 100) * totalTokens;
+          allocations.push({
+              name: alloc.name === "Project Team" ? `${project.name} Team` : alloc.name, // Dynamic project name for team
+              percentage: alloc.percentage,
+              amount: amount
+          });
+          allocatedPercentage += alloc.percentage;
+      });
 
-        /* Wallet Settings Modal */
-        .wallet-settings-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1006;
-            animation: fade-in 0.3s ease-out;
-        }
-        .wallet-settings-content {
-            background: #001100;
-            border: 2px solid #0f0;
-            border-radius: 15px;
-            box-shadow: 0 0 25px #0f0, 0 0 50px #0f0 inset;
-            padding: 1.5rem;
-            width: 90%;
-            max-width: 350px;
-            position: relative;
-            text-align: center;
-            color: #0f0;
-            font-family: 'Share Tech Mono', monospace;
-        }
-        .wallet-settings-content h3 {
-            font-size: 1.8rem;
-            margin-bottom: 1rem;
-            text-shadow: 0 0 10px #0f0;
-        }
-        .wallet-settings-info p {
-            margin-bottom: 0.6rem;
-            font-size: 1rem;
-            color: #0f0;
-            text-shadow: 0 0 2px #0f0;
-        }
-        .wallet-settings-info span {
-            color: #fff;
-            text-shadow: 0 0 5px #fff;
-        }
-        .wallet-settings-buttons {
-            display: flex;
-            flex-direction: column;
-            margin-top: 1.5rem;
-            gap: 10px;
-        }
-        .wallet-settings-buttons button {
-            background: #000;
-            color: #0f0;
-            border: 2px solid #0f0;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            text-shadow: 0 0 5px #0f0;
-            box-shadow: 0 0 10px #0f0;
-            transition: all 0.2s ease-in-out;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 0.9rem;
-        }
-        .wallet-settings-buttons button:hover {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
-        }
+      // Distribute remaining to random wallets and 'Other Wallets'
+      const remainingPercentage = 100 - allocatedPercentage;
+      const remainingAmount = (remainingPercentage / 100) * totalTokens;
+
+      if (remainingPercentage > 0) {
+          const numRandomWallets = 5; // Fixed number of random wallets for display
+          let distributedRandomly = 0;
+
+          for (let i = 0; i < numRandomWallets; i++) {
+              // Distribute randomly, ensuring small amounts for each
+              const randomPercent = (Math.random() * (remainingPercentage / numRandomWallets * 1.5 - remainingPercentage / numRandomWallets * 0.5) + remainingPercentage / numRandomWallets * 0.5);
+              const actualPercent = Math.min(randomPercent, remainingPercentage - distributedRandomly); // Cap it
+              if (actualPercent > 0.1) { // Only add if it's a meaningful percentage
+                  const amount = (actualPercent / 100) * totalTokens;
+                  allocations.push({
+                      name: `Random Wallet ${String.fromCharCode(65 + i)}`, // A, B, C...
+                      percentage: actualPercent,
+                      amount: amount
+                  });
+                  distributedRandomly += actualPercent;
+              }
+          }
+
+          const otherWalletsPercentage = remainingPercentage - distributedRandomly;
+          if (otherWalletsPercentage > 0) {
+              allocations.push({
+                  name: "Other Wallets",
+                  percentage: otherWalletsPercentage,
+                  amount: (otherWalletsPercentage / 100) * totalTokens
+              });
+          }
+      }
+
+      // Sort by percentage held descending
+      return allocations.sort((a, b) => b.percentage - a.percentage);
+
+  }, [project]); // Dependency array: Recalculate if project data changes
+
+  // Only compute holderAllocations if the project is launched
+  // The useCallback is defined always, but its result is only used conditionally
+  const holderAllocations = project && project.status === "Launched" ? calculateHolderAllocations() : [];
 
 
-        nav {
-            grid-area: nav;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            background: #001100;
-            padding: 1rem;
-            gap: 10px;
-            border-right: 2px solid #0f0;
-        }
-        nav button {
-            background: #000;
-            color: #0f0;
-            border: 2px solid #0f0;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            text-align: center;
-            text-shadow: 0 0 5px #0f0;
-            transition: all 0.3s ease-in-out;
-            font-family: 'Share Tech Mono', monospace;
-        }
-        nav button.active-nav {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
-        }
-        nav button:hover:not(.active-nav) {
-            background: #003300;
-            color: #0f0;
-            box-shadow: 0 0 15px #0f0, inset 0 0 8px #0f0;
-            transform: scale(1.02);
-        }
+  useEffect(() => {
+    if (project) {
+      const currentUserId = 'simulatedUserId';
+      const contributed = project.userContributions[currentUserId] || 0;
+      setUserContributedAmount(contributed);
+      setShowHolders(false); // Reset holders view when project changes
+    } else {
+        setUserContributedAmount(0);
+    }
+  }, [project]);
 
-        main {
-            grid-area: main;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            overflow-y: auto;
-        }
+  if (!project) return null;
 
-        /* Common section styling */
-        .app-section {
-            width: 100%;
-            max-width: 600px;
-            background: rgba(0, 17, 0, 0.7);
-            border: 2px solid #0f0;
-            border-radius: 10px;
-            box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
-            padding: 0.8rem;
-            text-align: center;
-            backdrop-filter: blur(2px);
-        }
-        .app-section h2 {
-            font-size: 1.6rem;
-            margin-bottom: 0.8rem;
-            text-shadow: 0 0 8px #0f0, 0 0 15px #0f0;
-            color: #0f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
+  const handleContributionSubmit = (e) => {
+    e.preventDefault();
+    const amount = parseFloat(contributionAmountInput);
 
-        /* Clock Timer Styles */
-        .timer-box {
-            padding: 5px 10px;
-            background: #000;
-            border: 2px solid #0f0;
-            border-radius: 8px;
-            box-shadow: 0 0 8px #0f0, 0 0 15px #0f0 inset;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Orbitron', sans-serif;
-            color: #0f0;
-        }
-        .clock {
-            display: flex;
-            gap: 4px;
-            align-items: center;
-        }
-        .flip-unit {
-            perspective: 1000px;
-            overflow: hidden;
-            border-radius: 4px;
-        }
-        .flip-card {
-            position: relative;
-            width: 35px;
-            height: 45px;
-            font-size: 1.2rem;
-            line-height: 45px;
-            background: #111;
-            color: #0f0;
-            border-radius: 4px;
-            box-shadow: 0 0 5px rgba(0, 255, 0, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
-            transform-style: preserve-3d;
-            transition: transform 0.6s;
-            font-family: 'Orbitron', sans-serif;
-        }
-        .clock span {
-            font-size: 1.5rem;
-            text-shadow: 0 0 5px #0f0;
-            color: #0f0;
-        }
-        @keyframes flip {
-            0% { transform: rotateX(0deg); }
-            50% { transform: rotateX(-90deg); }
-            100% { transform: rotateX(0deg); }
-        }
+    if (isNaN(amount) || amount <= 0) {
+      console.error("Please enter a valid positive contribution amount.");
+      return;
+    }
+    if (amount < project.minContribution) {
+      console.error(`Minimum contribution is $${project.minContribution} AVAX.`);
+      return;
+    }
 
-        /* Grid for voting memes */
-        .voting-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* 2 columns on mobile, more on wider screens */
-            gap: 0.8rem;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .meme-card {
-            background: #000;
-            border: 2px solid #0f0;
-            border-radius: 10px;
-            padding: 0.6rem;
-            text-align: center;
-            box-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
-            transition: transform 0.3s ease;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 100%;
-        }
-        .meme-card:hover {
-            transform: scale(1.03);
-            box-shadow: 0 0 25px #0f0;
-        }
-        .meme-card img {
-            max-width: 100%;
-            height: 90px; /* Further reduced fixed height */
-            object-fit: cover;
-            border-radius: 5px;
-            margin-bottom: 0.4rem;
-            border: 1px solid #0f0;
-            box-shadow: 0 0 5px #0f0;
-        }
-        .meme-card p {
-            color: #0f0;
-            text-shadow: 0 0 3px #0f0;
-            margin-bottom: 0.2rem;
-            font-size: 0.75rem; /* Further reduced font size */
-        }
-        .meme-card p strong {
-            color: #fff;
-            text-shadow: 0 0 5px #fff;
-        }
+    const remainingUserCap = project.maxContributionPerUser - userContributedAmount;
+    if (amount > remainingUserCap) {
+        console.error(`You can only contribute up to $${remainingUserCap.toFixed(2)} AVAX more to this project.`);
+        return;
+    }
 
-        .vote-btn {
-            background: #000;
-            color: #0f0;
-            border: 2px solid #0f0;
-            padding: 6px 12px;
-            margin-top: 0.5rem;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            text-shadow: 0 0 5px #0f0;
-            box-shadow: 0 0 10px #0f0;
-            transition: all 0.2s ease-in-out;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 0.8rem;
-        }
-        .vote-btn:disabled {
-            background: #111;
-            color: #555;
-            border-color: #444;
-            cursor: not-allowed;
-            box-shadow: none;
-            text-shadow: none;
-        }
-        .vote-btn:hover:not(:disabled) {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 20px #0f0, inset 0 0 10px #0f0;
-        }
+    const remainingPresaleCap = project.presaleTarget - project.currentContributions;
+    if (amount > remainingPresaleCap) {
+        console.error(`The presale only needs $${remainingPresaleCap.toFixed(2)} AVAX more to reach its target.`);
+        return;
+    }
 
-        /* Form elements */
-        .form-group {
-            margin-bottom: 0.7rem;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.2rem;
-            color: #0f0;
-            text-shadow: 0 0 3px #0f0;
-            font-size: 0.85rem;
-        }
-        .form-group input[type="text"],
-        .form-group input[type="url"],
-        .form-group input[type="file"],
-        .form-group input[type="number"],
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 0.5rem;
-            background: #000;
-            border: 1px solid #0f0;
-            border-radius: 5px;
-            color: #0f0;
-            font-family: 'Share Tech Mono', monospace;
-            text-shadow: 0 0 2px #0f0;
-            box-shadow: inset 0 0 5px rgba(0,255,0,0.5);
-            transition: all 0.2s ease;
-        }
-        .form-group input[type="text"]:focus,
-        .form-group input[type="url"]:focus,
-        .form-group input[type="file"]:focus,
-        .form-group input[type="number"]:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #fff;
-            box-shadow: inset 0 0 8px rgba(0,255,0,0.8), 0 0 10px rgba(0,255,0,0.8);
-        }
-        .form-group input[type="file"]::-webkit-file-upload-button {
-            background: #003300;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            text-shadow: 0 0 3px #0f0;
-            transition: all 0.2s ease;
-        }
-        .form-group input[type="file"]::-webkit-file-upload-button:hover {
-            background: #0f0;
-            color: #000;
-            box-shadow: 0 0 10px #0f0;
-        }
-        .file-preview {
-            max-width: 90px;
-            height: auto;
-            border: 1px solid #0f0;
-            margin-top: 5px;
-            box-shadow: 0 0 5px #0f0;
-        }
+    const currentUserId = 'simulatedUserId';
+    onContribute(project.name, amount, currentUserId);
+    setContributionAmountInput("");
+  };
 
-        /* Modal Styles (for meme detail) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            animation: fade-in 0.3s ease-out;
-        }
-        .modal-content {
-            background: #001100;
-            border: 2px solid #0f0;
-            border-radius: 15px;
-            box-shadow: 0 0 25px #0f0, 0 0 50px #0f0 inset;
-            padding: 1rem;
-            width: 90%;
-            max-width: 320px;
-            position: relative;
-            text-align: center;
-            overflow-y: auto;
-            max-height: 90vh;
-            color: #0f0;
-        }
-        .modal-content h3 {
-            font-size: 1.4rem;
-            margin-bottom: 0.6rem;
-            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
-        }
-        .modal-content p {
-            font-size: 0.85rem;
-            margin-bottom: 0.3rem;
-            text-shadow: 0 0 2px #0f0;
-        }
-        .modal-content img {
-            max-width: 90%;
-            max-height: 120px;
-            height: auto;
-            margin: 0.6rem auto;
-            border: 2px solid #0f0;
-            border-radius: 8px;
-            box-shadow: 0 0 15px #0f0;
-        }
-        .modal-close-btn {
-            top: 6px;
-            right: 6px;
-            font-size: 1.5rem;
-        }
-        .modal-link {
-            font-size: 0.85rem;
-        }
-        .modal-info-value {
-            font-size: 0.9rem;
-        }
+  const isPresaleComplete = project.currentContributions >= project.presaleTarget;
 
-        /* Notifications */
-        #notifications-container {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .notification {
-            background: rgba(0, 17, 0, 0.9);
-            border: 2px solid #0f0;
-            border-radius: 6px;
-            padding: 8px 12px;
-            box-shadow: 0 0 8px #0f0;
-            font-size: 0.8rem;
-        }
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 border border-purple-700 rounded-lg shadow-2xl max-w-2xl w-full p-6 space-y-6 animate-scale-in overflow-y-auto max-h-[90vh]">
+        <div className="flex justify-between items-center border-b border-gray-700 pb-4">
+          <h2 className="text-3xl font-bold text-purple-400">{project.name} Details</h2>
+          <Button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-lg" variant="ghost">
+            &times;
+          </Button>
+        </div>
 
-        /* Live Vote Notifications - Permanent track below header */
-        #live-vote-track-container {
-            grid-area: live-vote-track;
-            width: 100%;
-            height: 35px;
-            background: rgba(0, 17, 0, 0.9);
-            border-bottom: 2px solid #0f0;
-            overflow: hidden;
-            position: relative;
-            display: flex;
-            align-items: center;
-            padding: 0 8px;
-        }
-        .live-vote-track-inner {
-            display: flex;
-            position: absolute;
-            left: 0;
-            animation: scroll-left 30s linear infinite;
-            white-space: nowrap;
-            will-change: transform;
-        }
-        @keyframes scroll-left {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-100%); }
-        }
-        .live-vote-slide {
-            background: #0f0;
-            color: #000;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.8rem;
-            box-shadow: 0 0 6px rgba(0, 255, 0, 0.7);
-            margin-right: 15px;
-            flex-shrink: 0;
-        }
+        <div className="space-y-4 text-gray-300">
+          <p className="text-lg leading-relaxed">{project.fullDescription}</p>
 
-        /* Mooch'd Animation */
-        .mooched-overlay {
-            z-index: 1003;
-        }
-        .mooched-message {
-            font-size: 4rem;
-        }
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center">
+              <Lightbulb className="w-4 h-4 mr-2 text-yellow-400" />
+              <span>Status: <span className="font-semibold text-yellow-300">{project.status}</span></span>
+            </div>
+            <div className="flex items-center">
+              {project.moochBurned ? (
+                <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2 text-red-400" />
+              )}
+              <span>1M Mooch Burned: <span className="font-semibold">{project.moochBurned ? "Yes" : "No"}</span></span>
+            </div>
 
-        /* "You have Mooch'd a meme" animation */
-        .moochd-meme-overlay {
-            z-index: 1004;
-        }
-        .moochd-meme-message {
-            font-size: 2.5rem;
-        }
-
-        /* Inactive Phase Animated Image */
-        .inactive-phase-container {
-            height: 250px;
-            padding: 0.8rem;
-            gap: 0.8rem;
-        }
-        .bouncing-image {
-            width: 80px;
-        }
-        .inactive-phase-container p {
-            font-size: 1.5rem;
-        }
-
-        footer {
-            grid-area: footer;
-            text-align: center;
-            padding: 0.4rem;
-            font-size: 0.8rem;
-            background: #001100;
-            border-top: 2px solid #0f0;
-            text-shadow: 0 0 3px #0f0;
-            color: #0f0;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            body {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto 1fr auto;
-                grid-template-areas:
-                    "header"
-                    "live-vote-track"
-                    "nav"
-                    "main"
-                    "footer";
-            }
-            nav {
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-                border-right: none;
-                border-bottom: 2px solid #0f0;
-                padding: 0.5rem;
-                gap: 5px;
-            }
-            nav button {
-                flex-grow: 1;
-                font-size: 0.75rem;
-                padding: 4px 8px;
-                min-width: unset;
-            }
-            main {
-                padding: 0.5rem;
-                gap: 0.8rem;
-            }
-            header {
-                flex-direction: column; /* Stack header items vertically */
-                align-items: center;
-                padding: 0.5rem;
-            }
-            header .header-logo-title-wrap {
-                flex-direction: column;
-                gap: 5px;
-            }
-            header h1 {
-                font-size: 1.8rem;
-            }
-            header img {
-                height: 35px;
-            }
-            .header-timer-info {
-                position: static; /* Remove absolute positioning on mobile */
-                transform: none;
-                flex-direction: row;
-                justify-content: center;
-                align-items: center;
-                gap: 8px;
-                margin-top: 10px;
-                width: 100%;
-            }
-            .header-timer-info .timer-box {
-                padding: 4px 6px;
-            }
-            .header-timer-info .flip-card {
-                width: 25px;
-                height: 35px;
-                font-size: 0.9rem;
-                line-height: 35px;
-            }
-            .header-timer-info .clock span {
-                font-size: 1rem;
-            }
-            .header-timer-info p {
-                font-size: 0.7rem;
-            }
-
-            .profile-icon {
-                position: static; /* Remove absolute positioning on mobile */
-                transform: none;
-                margin-top: 10px;
-                width: 35px;
-                height: 35px;
-                font-size: 1.2rem;
-            }
-            .wallet-settings-content {
-                padding: 1rem;
-            }
-            .wallet-settings-content h3 {
-                font-size: 1.5rem;
-            }
-            .wallet-settings-info p {
-                font-size: 0.9rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div id="root-container"> {/* New root container for the entire React app */}
-        {/* React will render the entire application UI here */}
-    </div>
-    
-    <div id="notifications-container"></div>
-    <div id="mooched-animation-container"></div>
-    <div id="moochd-meme-animation-container"></div>
-    <div id="wallet-settings-modal-root"></div> <!-- Root for wallet settings modal -->
-
-
-    <!-- React and ReactDOM CDNs -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation in browser (for development only) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
-        const ReactDOM = window.ReactDOM;
-
-        // --- Helper for formatting timers ---
-        const formatTime = (seconds) => {
-            if (seconds < 0) seconds = 0;
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            const s = Math.floor(seconds % 60);
-            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        };
-
-        // --- FlipDisplay Component for animated numbers ---
-        const FlipDisplay = ({ value }) => {
-            const [currentValue, setCurrentValue] = useState(value);
-            const cardRef = useRef(null);
-
-            useEffect(() => {
-                if (value !== currentValue) {
-                    setCurrentValue(value);
-                    if (cardRef.current) {
-                        cardRef.current.classList.remove('flip');
-                        void cardRef.current.offsetWidth; 
-                        cardRef.current.classList.add('flip');
-                    }
-                }
-            }, [value, currentValue]);
-
-            return (
-                <div className="flip-unit">
-                    <div ref={cardRef} className="flip-card">
-                        {currentValue}
-                    </div>
+            {project.shillScore > 0 && (
+                <div className="flex items-center">
+                    <Scale className="w-4 h-4 mr-2 text-pink-400" />
+                    <span>Shill Score: <span className="font-semibold text-pink-300">{project.shillScore}</span></span>
                 </div>
-            );
-        };
+            )}
+             <div className="flex items-center">
+                <BarChart2 className="w-4 h-4 mr-2 text-blue-400" />
+                <span>Current Votes: <span className="font-semibold text-blue-300">{project.votes.toLocaleString()}</span></span>
+            </div>
 
-        // --- WalletSettingsModal Component (new standalone modal) ---
-        const WalletSettingsModal = ({ account, chainId, onDisconnect, onClose, MOOCH_PRICE_USD, AVAX_PRICE_USD, mockTokenBalance, mockAvaxBalance }) => {
-            // Calculate portfolio value based on passed props
-            const portfolioValue = (mockTokenBalance * MOOCH_PRICE_USD + mockAvaxBalance * AVAX_PRICE_USD).toFixed(2);
-
-            return ReactDOM.createPortal(
-                <div className="wallet-settings-modal">
-                    <div className="wallet-settings-content">
-                        <h3>Wallet Details</h3>
-                        <div className="wallet-settings-info">
-                            <p>Connected: <span>{account ? account.substring(0, 6) + '...' + account.substring(account.length - 4) : 'N/A'}</span></p>
-                            <p>Chain ID: <span>{chainId} (Avalanche C-Chain)</span></p>
-                            <p>Total Portfolio Value: <span className="text-yellow-300">${portfolioValue}</span></p>
-                            <p>MOOCH Holdings: <span className="text-green-300">{mockTokenBalance.toFixed(0)} $MOOCH</span></p>
-                            <p>AVAX Holdings: <span className="text-green-300">{mockAvaxBalance.toFixed(2)} AVAX</span></p>
-                        </div>
-                        <div className="wallet-settings-buttons">
-                            <button onClick={onDisconnect}>Disconnect</button>
-                            <button onClick={onClose}>Back</button>
-                        </div>
+            {(project.status === "Voting" || project.status === "Presale Active" || project.status === "Launched") && (
+              <>
+                <div className="flex items-center">
+                  <DollarSign className="w-4 h-4 mr-2 text-green-400" />
+                  <span>Presale Target: <span className="font-semibold text-green-300">{project.presaleTarget ? `$${project.presaleTarget.toLocaleString()} AVAX` : 'N/A'}</span></span>
+                </div>
+                <div className="flex items-center">
+                  <Wallet className="w-4 h-4 mr-2 text-purple-400" />
+                  <span>Min Contribution: <span className="font-semibold text-purple-300">{project.minContribution ? `$${project.minContribution.toLocaleString()} AVAX` : 'N/A'}</span></span>
+                </div>
+                 <div className="flex items-center">
+                  <Wallet className="w-4 h-4 mr-2 text-orange-400" />
+                  <span>Max per person: <span className="font-semibold text-orange-300">{project.maxContributionPerUser ? `$${project.maxContributionPerUser.toLocaleString()} AVAX` : 'N/A'}</span></span>
+                </div>
+                <div className="flex items-center">
+                  <DollarSign className="w-4 h-4 mr-2 text-cyan-400" />
+                  <span>Token Price: <span className="font-semibold text-cyan-300">{project.tokenPrice ? `${project.tokenPrice.toFixed(4)} AVAX` : 'N/A'}</span></span>
+                </div>
+                <div className="flex items-center">
+                  <Verified className="w-4 h-4 mr-2 text-indigo-400" />
+                  <span>Audit Status: <span className="font-semibold text-indigo-300">{project.auditStatus || 'Pending'}</span></span>
+                </div>
+                {project.status === "Launched" && (
+                    <div className="flex items-center">
+                        <Users className="w-4 h-4 mr-2 text-blue-400" />
+                        <span>Circulating Supply: <span className="font-semibold text-blue-300">{project.circulatingSupply.toLocaleString()} {project.name}</span></span>
                     </div>
-                </div>,
-                document.getElementById('wallet-settings-modal-root')
-            );
+                )}
+              </>
+            )}
+            {project.status === "Presale Active" && (
+                <div className="flex items-center col-span-full bg-gray-800 p-2 rounded-md">
+                    <TrendingUp className="w-5 h-5 mr-2 text-lime-400 animate-bounce" />
+                    <span className="text-lg font-bold text-lime-300">
+                        Raised: ${project.currentContributions.toLocaleString()} / ${project.presaleTarget.toLocaleString()} AVAX
+                    </span>
+                </div>
+            )}
+             {project.status === "Launched" && (
+                <div className="flex items-center col-span-full bg-green-800 p-3 rounded-md justify-center">
+                    <CheckCircle className="w-6 h-6 mr-3 text-green-300 animate-pulse" />
+                    <span className="text-xl font-bold text-green-100">
+                        PROJECT LAUNCHED!
+                    </span>
+                </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-4 mt-6">
+            {project.websiteUrl && (
+              <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-400 hover:underline hover:text-blue-300 transition-colors">
+                <ExternalLink className="w-4 h-4 mr-1" /> Project Website
+              </a>
+            )}
+            {project.whitepaperUrl && (
+              <a href={project.whitepaperUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-400 hover:underline hover:text-blue-300 transition-colors">
+                <ScrollText className="w-4 h-4 mr-1" /> Whitepaper
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="pt-4 border-t border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+          {/* Burn Mooch Button */}
+          {!project.moochBurned && (project.status === "Pending Burn") && (
+            <Button
+              onClick={() => onBurnMooch(project.name)}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            >
+              🔥 Burn 1M $Mooch
+            </Button>
+          )}
+
+          {/* Send for Review Button */}
+          {project.moochBurned && project.status === "Submitted" && (
+            <Button
+              onClick={() => onSendForReview(project.name)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            >
+              <Clock className="mr-2 h-5 w-5" /> Send for Money Bears Review
+            </Button>
+          )}
+
+          {/* Money Bears Accept Button (Simulated Admin Action) */}
+          {project.status === "Under Review" && (
+            <Button
+              onClick={() => onAcceptReview(project.name)}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            >
+              <CheckCircle className="mr-2 h-5 w-5" /> Money Bears Accept Project
+            </Button>
+          )}
+
+          {/* Simulate Presale Launch Button (Admin/Demo only) */}
+          {project.status === "Voting" && (
+            <Button
+              onClick={() => onSimulatePresale(project.name)}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+            >
+              🚀 Simulate Presale Launch
+            </Button>
+          )}
+
+          {/* Contribution Section */}
+          {project.status === "Presale Active" && (
+            userHasMoochNFT ? (
+              isPresaleComplete ? (
+                <p className="text-green-400 font-semibold text-lg text-center sm:text-right w-full">Presale Completed!</p>
+              ) : (
+                <form onSubmit={handleContributionSubmit} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Input
+                    type="number"
+                    placeholder={`Contribute (max ${ (project.maxContributionPerUser - userContributedAmount).toFixed(2) }) AVAX`}
+                    value={contributionAmountInput}
+                    onChange={(e) => setContributionAmountInput(e.target.value)}
+                    min={project.minContribution}
+                    max={project.maxContributionPerUser - userContributedAmount}
+                    step="0.01"
+                    className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-green-500 focus:ring-green-500 focus:ring-1"
+                  />
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+                    disabled={userContributedAmount >= project.maxContributionPerUser || isPresaleComplete}
+                  >
+                    Contribute
+                  </Button>
+                </form>
+              )
+            ) : (
+              <p className="text-red-400 font-semibold text-lg text-center sm:text-right w-full">
+                Mooch NFT required to contribute!
+              </p>
+            )
+          )}
+           {/* View Holders Button for Launched Projects */}
+          {project.status === "Launched" && (
+              <Button
+                  onClick={() => setShowHolders(!showHolders)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+              >
+                  <Users className="mr-2 h-5 w-5" /> {showHolders ? 'Hide Holders' : 'View Holders'}
+              </Button>
+          )}
+        </div>
+
+        {/* Holders Section - Conditionally rendered */}
+        {project.status === "Launched" && showHolders && (
+            <div className="mt-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <h3 className="text-xl font-bold text-center text-blue-300 mb-4 flex items-center justify-center">
+                    <Users className="mr-2 h-5 w-5" /> Top Token Holders
+                </h3>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-700">
+                        <thead className="bg-gray-700">
+                            <tr>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Holder
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    % Held
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    Tokens Held
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                            {holderAllocations.map((holder, index) => (
+                                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'} hover:bg-gray-600 transition-colors`}>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">
+                                        {holder.name}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-purple-300">
+                                        {holder.percentage.toFixed(2)}%
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-cyan-300">
+                                        {holder.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <p className="text-xs text-gray-500 mt-4 text-center">
+                    (Note: Token amounts are approximate for demonstration purposes.)
+                </p>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+// --- TradeLaunchedMemes Component ---
+const TradeLaunchedMemes = ({ launchedProjects, onBackToArena, userAvaxBalance, userTokenBalances, onPerformTrade, userConnectedXAccount, onShillProject }) => {
+    const SIMULATED_GAS_FEE_AVAX = 0.002;
+
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [tradeDirection, setTradeDirection] = useState('buy'); // 'buy' or 'sell'
+    const [inputAmount, setInputAmount] = useState("");
+    const [slippage, setSlippage] = useState(0.5); // Default slippage 0.5%
+    const [isTrading, setIsTrading] = useState(false);
+    const [transactionResult, setTransactionResult] = useState(null); // { status: 'success'|'fail', message: string, txLink: string }
+    const [chartDataType, setChartDataType] = useState('price'); // 'price' or 'mcap'
+
+    // Set default selected project if available
+    useEffect(() => {
+        if (launchedProjects.length > 0 && !selectedProject) {
+            setSelectedProject(launchedProjects[0]);
+        }
+    }, [launchedProjects, selectedProject]);
+
+    // Generate dummy price/mcap data for the chart
+    const generateChartData = useCallback((project) => {
+        if (!project) return [];
+
+        const data = [];
+        const initialPrice = project.tokenPrice; // Base for historical data
+        const currentPrice = project.currentPrice; // The current dynamic price from state
+        const circulatingSupply = project.circulatingSupply;
+
+        // Generate history for the last 24 periods (e.g., hours)
+        for (let i = 0; i < 23; i++) {
+            const historicalPrice = initialPrice * (1 + (Math.random() - 0.5) * 0.05); // Random fluctuation
+            const historicalMcap = historicalPrice * circulatingSupply * AVAX_USD_PRICE;
+            data.push({
+                time: `${i < 10 ? '0' : ''}${i}:00`,
+                price: parseFloat(historicalPrice.toFixed(6)),
+                mcap: parseFloat(historicalMcap.toFixed(2)),
+            });
+        }
+        // Add the current real-time price as the last data point
+        data.push({
+            time: 'Now',
+            price: parseFloat(currentPrice.toFixed(6)),
+            mcap: parseFloat((currentPrice * circulatingSupply * AVAX_USD_PRICE).toFixed(2))
+        });
+        return data;
+    }, [AVAX_USD_PRICE]);
+
+    const projectChartData = selectedProject ? generateChartData(selectedProject) : [];
+
+    // Custom Tooltip for Recharts
+    const CustomTooltip = ({ active, payload, label }) => {
+      if (active && payload && payload.length) {
+        const dataPoint = payload[0].payload;
+        return (
+          <div className="bg-gray-800 border border-gray-700 p-3 rounded-lg shadow-lg text-white text-sm">
+            <p className="font-bold text-gray-300">{label}</p>
+            {chartDataType === 'price' ? (
+                <p>Price: <span className="font-semibold">{dataPoint.price.toFixed(6)} AVAX</span></p>
+            ) : (
+                <p>Market Cap: <span className="font-semibold">${dataPoint.mcap.toLocaleString()} USD</span></p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">Click chart for more info (simulated)</p>
+          </div>
+        );
+      }
+      return null;
+    };
+
+
+    // Calculate amounts based on trade direction and inputs
+    const calculateTradeAmounts = useCallback(() => {
+        if (!selectedProject || !inputAmount || isNaN(parseFloat(inputAmount))) {
+            return { outputAmount: 0, rawOutput: 0, priceImpact: 0, gasFee: SIMULATED_GAS_FEE_AVAX };
+        }
+
+        const amount = parseFloat(inputAmount);
+        const currentPrice = selectedProject.currentPrice;
+        const effectiveSlippage = slippage / 100;
+
+        let outputAmount = 0;
+        let rawOutput = 0; // Amount before slippage
+        let simulatedPriceImpact = 0;
+
+        simulatedPriceImpact = Math.log10(Math.max(1, amount)) * PRICE_IMPACT_FACTOR_TRADE;
+        simulatedPriceImpact = Math.min(simulatedPriceImpact, 0.05);
+
+        if (tradeDirection === 'buy') {
+            rawOutput = (amount / currentPrice);
+            outputAmount = rawOutput * (1 - effectiveSlippage);
+        } else { // sell
+            rawOutput = (amount * currentPrice);
+            outputAmount = rawOutput * (1 - effectiveSlippage);
+        }
+
+        return {
+            outputAmount: Math.max(0, outputAmount),
+            rawOutput: rawOutput,
+            priceImpact: simulatedPriceImpact,
+            gasFee: SIMULATED_GAS_FEE_AVAX
         };
+    }, [selectedProject, inputAmount, slippage, tradeDirection, SIMULATED_GAS_FEE_AVAX, PRICE_IMPACT_FACTOR_TRADE]);
 
+    const { outputAmount, rawOutput, priceImpact, gasFee } = calculateTradeAmounts();
 
-        const App = () => {
-            // UI State
-            const [account, setAccount] = useState(null);
-            const [chainId, setChainId] = useState(43114);
-            const [message, setMessage] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-            const [activeTab, setActiveTab] = useState('home');
-            const [showWalletModal, setShowWalletModal] = useState(false);
+    const handleSwap = () => {
+        if (!selectedProject) {
+            setTransactionResult({ status: 'fail', message: 'Please select a token to trade.', txLink: '' });
+            return;
+        }
+        const amount = parseFloat(inputAmount);
+        if (isNaN(amount) || amount <= 0) {
+            setTransactionResult({ status: 'fail', message: 'Please enter a valid amount.', txLink: '' });
+            return;
+        }
 
-            // Cycle Timers and Status (mocked for UI display)
-            const [currentCycleStatus, setCurrentCycleStatus] = useState("Submission");
-            const [timeRemaining, setTimeRemaining] = useState(3600 * 4 + 10);
-            const hours = Math.floor(timeRemaining / 3600);
-            const minutes = Math.floor((timeRemaining % 3600) / 60);
-            const seconds = Math.floor(timeRemaining % 60);
+        setIsTrading(true);
+        setTransactionResult(null);
 
-            // Meme Submission State
-            const [memeTicker, setMemeTicker] = useState('');
-            const [memeName, setMemeName] = useState('');
-            const [memeImage, setMemeImage] = useState(null);
-            const [memeDescription, setMemeDescription] = useState('');
-            const [memeXLink, setMemeXLink] = useState('');
-            const [memeImagePreview, setMemeImagePreview] = useState(null);
-            const [isSubmittingMeme, setIsSubmittingMeme] = useState(false);
-            const MEME_SUBMISSION_COST = 100;
+        let success = true;
+        let message = "";
+        let priceChange = 0; // To simulate price increase/decrease
 
-            // Meme specific animations
-            const [showMoochdMemeAnimation, setShowMoochdMemeAnimation] = useState(false);
-
-            // Memes for Display/Voting (mocked data)
-            const [activeMemes, setActiveMemes] = useState([
-                { id: 1, ticker: "AVAX", name: "Decentralized Snowman", ipfsHash: "300x200/00FF00/000000?text=AI-Snowman", xLink: "https://x.com/mocklink1", votes: 120, active: true, views: 500, submissionDate: "2025-06-25", submitter: "0xMockAddrA1B2C3D4" },
-                { id: 2, ticker: "ETH", name: "Blockchain Forest", ipfsHash: "300x200/00FF00/000000?text=AI-Forest", xLink: "https://x.com/mocklink2", votes: 85, active: true, views: 300, submissionDate: "2025-06-26", submitter: "0xMockAddrE5F6G7H8" },
-                { id: 3, ticker: "SOL", name: "Speedy Gecko", ipfsHash: "300x200/00FF00/000000?text=AI-Gecko", xLink: "https://x.com/mocklink3", votes: 200, active: true, views: 700, submissionDate: "2025-06-24", submitter: "0xMockAddrI9J0K1L2" },
-                { id: 4, ticker: "DOGE", name: "Moon Doge", ipfsHash: "300x200/00FF00/000000?text=AI-Doge", xLink: "https://x.com/mocklink4", votes: 95, active: true, views: 450, submissionDate: "2025-06-27", submitter: "0xMockAddrM3N4O5P6" },
-                { id: 5, ticker: "ADA", name: "Smart Contract Tree", ipfsHash: "300x200/00FF00/000000?text=AI-Tree", xLink: "https://x.com/mocklink5", votes: 150, active: true, views: 600, submissionDate: "2025-06-23", submitter: "0xMockAddrQ7R8S9T0" },
-            ]);
-            const [showMemeDetail, setShowMemeDetail] = useState(false);
-            const [selectedMeme, setSelectedMeme] = useState(null);
-            const [votedMemeId, setVotedMemeId] = useState(null);
-            const [showMoochedAnimation, setShowMoochedAnimation] = useState(false);
-
-            // Trending Memes (Mock Data)
-            const [trendingMemes, setTrendingMemes] = useState([]);
-            useEffect(() => {
-                const sortedTrending = [...activeMemes].sort((a, b) => b.votes - a.votes).slice(0, 3);
-                setTrendingMemes(sortedTrending);
-            }, [activeMemes]);
-
-            // Top Tokens (Mock Data for Home Tab)
-            const [topTokens, setTopTokens] = useState([
-                { ticker: "BTC", logo: "100x100/FFA500/000000?text=BTC", mc: "1.3T $" },
-                { ticker: "ETH", logo: "100x100/808080/FFFFFF?text=ETH", mc: "400B $" },
-                { ticker: "SOL", logo: "100x100/00FFFF/000000?text=SOL", mc: "80B $" },
-            ]);
-
-            // Last Meme of the Day
-            const [lastMemeOfTheDay, setLastMemeOfTheDay] = useState({ 
-                id: 101, 
-                ticker: "BTC", 
-                name: "Cyberpunk Whale", 
-                ipfsHash: "400x300/00FF00/000000?text=AI-Winning+Meme", 
-                xLink: "https://x.com/mocklastmeme", 
-                votes: 750, 
-                submitter: "0xMockSubmitterAddressExample01",
-                currentMC: "200B $", 
-                ath: "70000 $", 
-                totalSupply: "21M BTC", 
-                moochUsedToVote: "10 $MOOCH" 
-            });
-
-            // Mock token balance for off-chain feature (user's personal MOOCH)
-            const [mockTokenBalance, setMockTokenBalance] = useState(0); 
-            const [isClaimingTokens, setIsClaimingTokens] = useState(false);
-
-            // Mock Notification State
-            const [notifications, setNotifications] = useState([]);
-            const [liveVoteNotifications, setLiveVoteNotifications] = useState([]);
-
-            // Mock Global Game Statistics
-            const [gameStats, setGameStats] = useState({
-                totalMemes: 150,
-                totalVotes: 5200,
-                activeParticipants: 85,
-                cyclesCompleted: 12,
-            });
-
-            // Mock Activity Feed (for Trending tab)
-            const [activityFeed, setActivityFeed] = useState([
-                { id: 1, user: "0xUserA...", action: "voted for", memeName: "Decentralized Snowman", timestamp: "2m ago" },
-                { id: 2, user: "0xUserB...", action: "submitted", memeName: "Blockchain Forest", timestamp: "1h ago" },
-                { id: 3, user: "0xUserC...", action: "voted for", memeName: "Speedy Gecko", timestamp: "3h ago" },
-            ]);
-
-            // Earn Section States
-            const [mockMoochSpentTotal, setMockMoochSpentTotal] = useState(0);
-            const [avaxPoolBalance, setAvaxPoolBalance] = useState(1000); // Pool AVAX, starts at 1000
-            const [mockAvaxBalance, setMockAvaxBalance] = useState(0); // User's personal AVAX balance, starts at 0
-            const [userPoints, setUserPoints] = useState(0); // Calculated based on mooch spent
-            const [mockApr, setMockApr] = useState(0); // Weekly APR in percentage
-            const [userClaimableAvax, setUserClaimableAvax] = useState(0);
-            const [isClaimingAvax, setIsClaimingAvax] = useState(false);
-
-            // OTC Section States
-            const [swapAvaxAmount, setSwapAvaxAmount] = useState(0);
-            const [selectedSwapToken, setSelectedSwapToken] = useState('');
-            const launchedTokens = [{ ticker: "$MOOCH", priceRatio: 1 }, { ticker: "TOKENB", priceRatio: 0.5 }]; // Mock launched tokens
-
-            // Mock Prices (Declared once globally in App component)
-            const MOOCH_PRICE_USD = 0.05;
-            const AVAX_PRICE_USD = 30;
-
-            // --- Notification Functions ---
-            const addNotification = useCallback((msg, type = 'info') => {
-                const newNotification = { id: Date.now(), message: msg, type: type };
-                setNotifications(prev => [newNotification, ...prev].slice(0, 5));
-                setTimeout(() => { setNotifications(prev => prev.filter(n => n.id !== newNotification.id)); }, 5000);
-            }, []);
-
-            const addLiveVoteNotification = useCallback((msg) => {
-                const newNotification = { id: Date.now(), message: msg };
-                setLiveVoteNotifications(prev => [...prev, newNotification]);
-            }, []);
-            
-            // --- Live Vote Track Effect ---
-            useEffect(() => {
-                const track = document.getElementById('live-vote-track-inner');
-                if (track) {
-                    track.innerHTML = '';
-                    liveVoteNotifications.forEach(notification => {
-                        const slide = document.createElement('div');
-                        slide.className = 'live-vote-slide';
-                        slide.textContent = notification.message;
-                        track.appendChild(slide);
-                    });
-                    track.style.animation = 'none';
-                    void track.offsetWidth;
-                    track.style.animation = null;
-                }
-            }, [liveVoteNotifications]);
-
-
-            // Initial load effects
-            useEffect(() => {
-                addNotification("Welcome to Mooch Runner!", "success");
-                addNotification("Connect your wallet to begin!", "info");
-            }, [addNotification]);
-
-            // Mock functions for UI interactions
-            const connectWallet = () => {
-                setIsLoading(true);
-                setTimeout(() => {
-                    setAccount("0xMockAccount1234567890abcdefABCDEF");
-                    addNotification("Mock Wallet Connected!", "success");
-                    setMessage("");
-                    setIsLoading(false);
-                    setShowWalletModal(false);
-                }, 1000);
-            };
-
-            const disconnectWallet = () => {
-                setIsLoading(true);
-                setTimeout(() => {
-                    setAccount(null);
-                    setMessage("Wallet disconnected (mock).");
-                    addNotification("Mock Wallet Disconnected!", "warning");
-                    setIsLoading(false);
-                    setActiveTab('home');
-                    setShowWalletModal(false);
-                }, 1000);
-            };
-
-            // Timer countdown effect
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    setTimeRemaining(prev => {
-                        if (prev > 0) return prev - 1;
-                        if ((currentCycleStatus === "Voting" || currentCycleStatus === "Prep") && !isLoading) {
-                            setTimeout(() => handleEndCycle(), 1000);
-                        }
-                        return 0;
-                    });
-                }, 1000);
-                return () => clearInterval(timer);
-            }, [timeRemaining, currentCycleStatus, isLoading]);
-
-            // --- IPFS Upload Handling (UI only) ---
-            const handleImageChange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 2 * 1024 * 1024) {
-                        addNotification("Image size too large (max 2MB).", "error");
-                        setMemeImage(null);
-                        setMemeImagePreview(null);
-                        return;
-                    }
-                    setMemeImage(file);
-                    setMemeImagePreview(URL.createObjectURL(file));
+        if (tradeDirection === 'buy') {
+            if (userAvaxBalance < amount + gasFee) {
+                success = false;
+                message = "Insufficient AVAX balance for this trade and gas fee.";
+            } else {
+                // Simulate price increase due to buying pressure
+                // Price increase is relative to the percentage of circulating supply bought
+                const tokensBeingBought = rawOutput; // Use rawOutput to represent tokens influencing price before slippage
+                const percentageOfSupply = tokensBeingBought / selectedProject.circulatingSupply;
+                priceChange = selectedProject.currentPrice * percentageOfSupply * 0.5; // Example factor 0.5 for impact
+                message = `Successfully bought ${outputAmount.toFixed(4)} ${selectedProject.name} tokens!`;
+            }
+        } else { // sell
+            const currentTokenBalance = userTokenBalances[selectedProject.name] || 0;
+            if (currentTokenBalance < amount) {
+                success = false;
+                message = `Insufficient ${selectedProject.name} tokens for this trade.`;
+            } else {
+                if (userAvaxBalance < gasFee) {
+                    success = false;
+                    message = "Insufficient AVAX balance for gas fee.";
                 } else {
-                    setMemeImage(null);
-                    setMemeImagePreview(null);
+                    // Simulate price decrease due to selling pressure
+                    const tokensBeingSold = amount;
+                    const percentageOfSupply = tokensBeingSold / selectedProject.circulatingSupply;
+                    priceChange = -selectedProject.currentPrice * percentageOfSupply * 0.5; // Example factor 0.5 for impact
+                    message = `Successfully sold ${amount.toFixed(4)} ${selectedProject.name} tokens for ${outputAmount.toFixed(4)} AVAX!`;
                 }
-            };
+            }
+        }
 
-            const uploadToIPFS = async (file) => {
-                addNotification("Uploading image to IPFS (mock)...", "info");
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        const mockText = encodeURIComponent(memeName.substring(0, 10) || 'Meme Upload');
-                        const mockHash = `300x200/00FF00/000000?text=${mockText}`;
-                        addNotification("Image uploaded to IPFS (mock)!", "success");
-                        resolve(mockHash);
-                    }, 1500);
-                });
-            };
+        setTimeout(() => {
+            setIsTrading(false);
+            if (success) {
+                onPerformTrade(
+                    selectedProject.name,
+                    tradeDirection,
+                    amount, // Input amount (AVAX for buy, Token for sell)
+                    outputAmount, // Output amount (Token for buy, AVAX for sell)
+                    gasFee,
+                    priceChange // Pass price change to App component
+                );
+                setTransactionResult({ status: 'success', message: message, txLink: `https://snowtrace.io/tx/${generateTxHash()}` });
+                setInputAmount(""); // Clear input on success
+            } else {
+                setTransactionResult({ status: 'fail', message: message, txLink: '' });
+            }
+        }, 1500); // Simulate network delay
+    };
 
-            const approveMooch = () => {
-                setIsLoading(true);
-                setMessage("Simulating $MOOCH token approval...");
-                addNotification("Simulating $MOOCH approval...", "info");
-                setTimeout(() => {
-                    setMessage("Mock: $MOOCH token approval assumed.");
-                    addNotification("Mock Approval Confirmed!", "success");
-                    setIsLoading(false);
-                }, 1500);
-            };
-
-            const handleSubmitMeme = async (e) => {
-                e.preventDefault();
-                if (!isMemeSubmissionOpen()) {
-                    addNotification("Meme submission is currently closed.", "error");
-                    return;
-                }
-                if (!memeImage || memeTicker.trim() === '' || memeName.trim() === '') {
-                    addNotification("Submission failed: Missing required fields or image.", "error");
-                    return;
-                }
-                if (mockTokenBalance < MEME_SUBMISSION_COST) {
-                    addNotification(`Not enough $MOOCH! Submission costs ${MEME_SUBMISSION_COST} $MOOCH. You have ${mockTokenBalance}.`, "error");
-                    return;
-                }
-
-                setIsSubmittingMeme(true);
-                addNotification("Meme submission in progress...", "info");
-                
-                const ipfsHash = await uploadToIPFS(memeImage); 
-                setTimeout(() => {
-                    addNotification("Meme submitted successfully!", "success");
-                    setShowMoochdMemeAnimation(true);
-                    setTimeout(() => setShowMoochdMemeAnimation(false), 3500);
-
-                    const newMeme = {
-                        id: activeMemes.length > 0 ? Math.max(...activeMemes.map(m => m.id)) + 1 : 1, 
-                        ticker: memeTicker.toUpperCase(),
-                        name: memeName,
-                        ipfsHash: ipfsHash, 
-                        xLink: memeXLink,
-                        votes: 0,
-                        active: true,
-                        views: 0, 
-                        submissionDate: new Date().toISOString().slice(0, 10),
-                        submitter: account, 
-                        moochUsedToVote: `${MEME_SUBMISSION_COST} $MOOCH`,
-                        description: memeDescription
-                    };
-                    setActiveMemes(prevMemes => [...prevMemes, newMeme]); 
-                    setGameStats(prev => ({...prev, totalMemes: prev.totalMemes + 1})); 
-                    setMockTokenBalance(prev => prev - MEME_SUBMISSION_COST); 
-                    setMemeTicker('');
-                    setMemeName('');
-                    setMemeImage(null);
-                    setMemeImagePreview(null);
-                    setMemeXLink('');
-                    setMemeDescription('');
-                    setIsSubmittingMeme(false);
-                    setMessage("");
-                }, 2000);
-            };
-
-            const handleVoteForMeme = (memeId, numVotes = 1) => {
-                if (!isVotingOpen) {
-                    addNotification("Meme voting is currently closed.", "error");
-                    return;
-                }
-                if (numVotes <= 0 || isNaN(numVotes)) {
-                    addNotification("Please enter a valid number of votes (at least 1).", "error");
-                    return;
-                }
-                if (mockTokenBalance < numVotes) {
-                    addNotification(`Not enough $MOOCH! You need ${numVotes} $MOOCH but have ${mockTokenBalance}.`, "error");
-                    return;
-                }
-
-                setIsLoading(true);
-                addNotification(`Casting ${numVotes} votes for meme #${memeId}...`, "info");
-                setVotedMemeId(memeId); 
-
-                setTimeout(() => {
-                    addNotification(`Successfully cast ${numVotes} votes for meme #${memeId}!`, "success");
-                    addLiveVoteNotification(`${numVotes} votes for "${activeMemes.find(m => m.id === memeId)?.name}"`);
-                    setActiveMemes(prevMemes => 
-                        prevMemes.map(meme => 
-                            meme.id === memeId ? { ...meme, votes: meme.votes + numVotes } : meme
-                        )
-                    );
-                    setMockTokenBalance(prev => prev - numVotes);
-                    setGameStats(prev => ({...prev, totalVotes: prev.totalVotes + numVotes}));
-
-                    setVoteHistory(prev => [
-                        { id: Date.now(), memeId, memeName: activeMemes.find(m => m.id === memeId)?.name, votes: numVotes, moochSpent: numVotes, timestamp: new Date().toLocaleString() },
-                        ...prev
-                    ]);
-
-                    setShowMoochedAnimation(true);
-                    setTimeout(() => setShowMoochedAnimation(false), 3500);
-
-                    const votedMeme = activeMemes.find(m => m.id === memeId);
-                    if (votedMeme) {
-                        setActivityFeed(prev => [
-                            { id: Date.now(), user: account, action: `voted ${numVotes}x for`, memeName: votedMeme.name, timestamp: "just now" },
-                            ...prev
-                        ].slice(0, 10));
-                    }
-
-                    setIsLoading(false);
-                    setVotedMemeId(null); 
-                    setMessage(""); 
-                }, 1000);
-            };
-
-            const handleEndCycle = () => {
-                if (!isEndCyclePossible && timeRemaining > 0) {
-                     addNotification("Cycle cannot be ended yet. Wait for Prep phase to conclude.", "warning");
-                     return;
-                }
-                setIsLoading(true);
-                addNotification("Attempting to end cycle...", "info");
-                setCurrentCycleStatus("Processing...");
-                setTimeout(() => {
-                    addNotification("Cycle ended! New winner announced and new cycle started.", "success");
-                    setCurrentCycleStatus("Submission");
-                    setTimeRemaining(3600 * 24);
-                    
-                    const winner = [...activeMemes].sort((a,b) => b.votes - a.votes)[0];
-                    if (winner) {
-                        setLastMemeOfTheDay({
-                            ...winner,
-                            ipfsHash: winner.ipfsHash.replace('200x150', '400x300'),
-                            votes: winner.votes,
-                            submitter: winner.submitter,
-                            currentMC: (Math.random() * 50 + 10).toFixed(1) + "B $",
-                            ath: (Math.random() * 10000 + 100).toFixed(0) + " $",
-                            totalSupply: (Math.random() * 1000).toFixed(0) + "T tokens",
-                            moochUsedToVote: "1 $MOOCH"
-                        });
-                        setActiveMemes([]);
-                        setTrendingMemes([]);
-                    } else {
-                        setLastMemeOfTheDay(null);
-                        setActiveMemes([]);
-                        setTrendingMemes([]);
-                    }
-                    setGameStats(prev => ({...prev, cyclesCompleted: prev.cyclesCompleted + 1}));
-                    setIsLoading(false);
-                    setMessage("");
-                }, 3000);
-            };
-
-            const handleClaimTestnetTokens = () => {
-                setIsClaimingTokens(true);
-                addNotification("Claiming tokens...", "info");
-                setTimeout(() => {
-                    setMockTokenBalance(prev => prev + 1000);
-                    addNotification("1000 $MOOCH tokens claimed!", "success");
-                    setIsClaimingTokens(false);
-                }, 1500);
-            };
-
-            // Phase change for testing
-            const togglePhase = () => {
-                if (currentCycleStatus === "Submission") {
-                    setCurrentCycleStatus("Voting");
-                    setTimeRemaining(3600 * 2 + 10);
-                    addNotification("Phase changed to Voting!", "info");
-                } else if (currentCycleStatus === "Voting") {
-                    setCurrentCycleStatus("Prep");
-                    setTimeRemaining(10);
-                    addNotification("Phase changed to Prep!", "info");
-                } else {
-                    setCurrentCycleStatus("Submission");
-                    setTimeRemaining(3600 * 4 + 10);
-                    addNotification("Phase changed to Submission!", "info");
-                }
-            };
+    const handleShill = () => {
+        if (!selectedProject) {
+            console.error("No project selected to shill.");
+            return;
+        }
+        if (!userConnectedXAccount) {
+            console.error("Connect your X account to shill this meme!");
+            setTransactionResult({status: 'fail', message: 'Connect your X account to shill this meme!', txLink: ''});
+            return;
+        }
+        onShillProject(selectedProject.name);
+        setTransactionResult({status: 'success', message: `You shilled ${selectedProject.name}! Hype increased!`, txLink: `https://x.com/intent/tweet?text=Just shilled $${selectedProject.name} on Mooch Launch Arena! Check it out! #Mooch #MemeCoin`});
+    };
 
 
-            // Determine if an action is available based on current phase (mocked)
-            const isMemeSubmissionOpen = currentCycleStatus === "Submission" && timeRemaining > 0;
-            const isVotingOpen = currentCycleStatus === "Voting" && timeRemaining > 0;
-            const isPrepPhase = currentCycleStatus === "Prep"; 
-            const isEndCyclePossible = currentCycleStatus === "Prep" && timeRemaining <= 0; 
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-6 space-y-12 font-sans">
+            <div className="text-center space-y-4 pt-8">
+                <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-600 drop-shadow-lg animate-pulse">
+                    🚀 Trade Launched Memes
+                </h1>
+                <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
+                    Explore and trade tokens from successfully launched Mooch projects.
+                </p>
+            </div>
 
-            // State for vote history
-            const [voteHistory, setVoteHistory] = useState([]);
-            
-            // Calculate user points and claimable AVAX
-            useEffect(() => {
-                setUserPoints(mockMoochSpentTotal); // 1 point per MOOCH spent
-                const calculatedApr = (mockMoochSpentTotal / 500) * 0.2; // Example: 0.2% APR per 500 MOOCH spent
-                setMockApr(calculatedApr * 100); // Convert to percentage
-                const claimable = (mockMoochSpentTotal / 100) * AVAX_PRICE_USD; // Example: 1 AVAX per 100 points
-                setUserClaimableAvax(claimable);
+            <div className="flex justify-center my-8">
+                <Button
+                    onClick={onBackToArena}
+                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+                >
+                    <ArrowLeft className="mr-2 h-5 w-5" /> Back to Launch Arena
+                </Button>
+            </div>
 
-            }, [mockMoochSpentTotal]);
+            {launchedProjects.length === 0 ? (
+                <p className="col-span-full text-center text-gray-500 text-lg py-10">
+                    No projects have launched yet. Launch one in the arena to start trading!
+                </p>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+                    {/* Trading Interface Card */}
+                    <Card className="bg-gray-900 border border-yellow-700 p-6 rounded-xl shadow-2xl space-y-6">
+                        <CardContent className="p-0 space-y-6">
+                            <h2 className="text-2xl font-bold text-yellow-400 flex items-center">
+                                <HandCoins className="mr-2 w-6 h-6" /> Trade Token
+                            </h2>
 
-            // Update total MOOCH spent when voting or submitting
-            useEffect(() => {
-                const totalSpentFromHistory = voteHistory.reduce((sum, record) => sum + record.moochSpent, 0);
-                setMockMoochSpentTotal(totalSpentFromHistory);
-            }, [voteHistory]);
+                            {/* Token Selection */}
+                            <div>
+                                <label className="block text-gray-300 text-sm font-medium mb-2">Select Token</label>
+                                <Select
+                                    value={selectedProject ? selectedProject.name : ''}
+                                    onValueChange={(value) => setSelectedProject(launchedProjects.find(p => p.name === value))}
+                                >
+                                    <SelectTrigger className="w-full bg-gray-800 border border-gray-700 text-white focus:ring-yellow-500 focus:border-yellow-500">
+                                        <SelectValue placeholder="Choose a launched token" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-gray-800 text-white border-gray-700">
+                                        {launchedProjects.map(proj => (
+                                            <SelectItem key={proj.name} value={proj.name}>
+                                                {proj.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
+                            {selectedProject && (
+                                <>
+                                    {/* Buy/Sell Tabs */}
+                                    <div className="flex bg-gray-800 rounded-lg p-1">
+                                        <Button
+                                            onClick={() => setTradeDirection('buy')}
+                                            className={`flex-1 ${tradeDirection === 'buy' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        >
+                                            Buy
+                                        </Button>
+                                        <Button
+                                            onClick={() => setTradeDirection('sell')}
+                                            className={`flex-1 ${tradeDirection === 'sell' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                        >
+                                            Sell
+                                        </Button>
+                                    </div>
 
-            const handleClaimAvax = () => {
-                setIsClaimingAvax(true);
-                addNotification(`Attempting to claim ${userClaimableAvax.toFixed(2)} AVAX...`, "info");
-                setTimeout(() => {
-                    if (userClaimableAvax > 0) {
-                        setMockAvaxBalance(prev => prev + userClaimableAvax);
-                        setAvaxPoolBalance(prev => Math.max(0, prev - userClaimableAvax)); // Deduct from pool
-                        addNotification(`Successfully claimed ${userClaimableAvax.toFixed(2)} AVAX!`, "success");
-                        setUserClaimableAvax(0);
-                        setUserPoints(0);
-                    } else {
-                        addNotification("No AVAX to claim.", "warning");
-                    }
-                    setIsClaimingAvax(false);
-                }, 2000);
-            };
-
-            const handleSwapAvaxToToken = () => {
-                if (swapAvaxAmount <= 0 || !selectedSwapToken) {
-                    addNotification("Please enter a valid amount and select a token to swap.", "error");
-                    return;
-                }
-                if (mockAvaxBalance < swapAvaxAmount) {
-                    addNotification("Not enough AVAX for this swap.", "error");
-                    return;
-                }
-                const tokenPriceRatio = launchedTokens.find(t => t.ticker === selectedSwapToken)?.priceRatio || 1;
-                const receivedTokens = (swapAvaxAmount * (AVAX_PRICE_USD / MOOCH_PRICE_USD)) * tokenPriceRatio * 1.1; // 10% discount
-                
-                addNotification(`Swapping ${swapAvaxAmount} AVAX for ${receivedTokens.toFixed(2)} ${selectedSwapToken}...`, "info");
-                setIsLoading(true);
-
-                // Mock transaction details
-                const gasFee = (Math.random() * 0.01).toFixed(4); // Mock gas fee
-                const slippage = (Math.random() * 0.5 + 0.1).toFixed(2); // Mock slippage 0.1-0.6%
-                const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`; // Mock transaction hash
-                const mockExplorerUrl = `https://avascan.info/tx/${mockTxHash}`; // Mock explorer link
-
-                setTimeout(() => {
-                    setMockAvaxBalance(prev => prev - swapAvaxAmount);
-                    if (selectedSwapToken === "$MOOCH") {
-                        setMockTokenBalance(prev => prev + Math.floor(receivedTokens));
-                    }
-                    addNotification(`Swap successful! Received ${receivedTokens.toFixed(2)} ${selectedSwapToken}.`, "success");
-                    addNotification(`Tx: ${mockTxHash.substring(0, 8)}... | Gas: ${gasFee} AVAX | Slippage: ${slippage}% <a href="${mockExplorerUrl}" target="_blank" class="modal-link">View Tx</a>`, "info");
-
-                    setSwapAvaxAmount(0);
-                    setSelectedSwapToken('');
-                    setIsLoading(false);
-                }, 2000);
-            };
-
-
-            // --- Bouncing Image Animation Logic (for inactive phases) ---
-            const bouncingImageRef = useRef(null);
-            const animationContainerRef = useRef(null);
-
-            useEffect(() => {
-                const img = bouncingImageRef.current;
-                const container = animationContainerRef.current;
-                if (!img || !container) return;
-
-                let posX = 0;
-                let posY = 0;
-                let directionX = 1;
-                let directionY = 1;
-                const speed = 2;
-
-                img.style.transform = `translate(0px, 0px)`;
-
-                const animate = () => {
-                    if (!img || !container || (isMemeSubmissionOpen || isVotingOpen)) {
-                        return;
-                    }
-
-                    const containerWidth = container.clientWidth;
-                    const containerHeight = container.clientHeight;
-                    const imgWidth = img.offsetWidth;
-                    const imgHeight = img.offsetHeight;
-
-                    posX += directionX * speed;
-                    posY += directionY * speed;
-
-                    if (posX + imgWidth > containerWidth) {
-                        directionX = -1;
-                        posX = containerWidth - imgWidth;
-                    } else if (posX < 0) {
-                        directionX = 1;
-                        posX = 0;
-                    }
-
-                    if (posY + imgHeight > containerHeight) {
-                        directionY = -1;
-                        posY = containerHeight - imgHeight;
-                    } else if (posY < 0) {
-                        directionY = 1;
-                        posY = 0;
-                    }
-
-                    img.style.transform = `translate(${posX}px, ${posY}px)`;
-                    requestAnimationFrame(animate);
-                };
-
-                if (!isMemeSubmissionOpen && !isVotingOpen) {
-                    animate();
-                }
-
-            }, [isMemeSubmissionOpen, isVotingOpen]);
-
-
-            // Conditional rendering for active sections
-            const renderContent = () => {
-                switch (activeTab) {
-                    case 'home':
-                        return (
-                            <>
-                                <p className="text-xl font-bold text-green-300 text-shadow-[0_0_5px_rgba(0,255,0,0.7)] mb-4">When accident launch happens, we mooch.</p>
-
-                                {/* Last Meme of the Day Gallery */}
-                                <div className="app-section">
-                                    <h2>🏆 Last Meme of the Day</h2>
-                                    {lastMemeOfTheDay ? (
-                                        <div className="text-center">
-                                            <p className="text-lg font-bold text-green-300">{lastMemeOfTheDay.name}</p>
-                                            <p className="text-sm">Ticker: {lastMemeOfTheDay.ticker}</p>
-                                            <img
-                                                src={`https://placehold.co/${lastMemeOfTheDay.ipfsHash}`} 
-                                                alt={lastMemeOfTheDay.name}
-                                                className="mt-4 mx-auto max-h-64 rounded-lg border border-green-700 animate-pulse-light cursor-pointer"
-                                                onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/150x150/003300/00FF00?text=Image+Error"; }}
-                                                onClick={() => { setSelectedMeme(lastMemeOfTheDay); setShowMemeDetail(true); }}
+                                    {/* Input Section */}
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-gray-300 text-sm font-medium mb-2">
+                                                You {tradeDirection === 'buy' ? 'pay (AVAX)' : 'pay (Token)'}
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                value={inputAmount}
+                                                onChange={(e) => setInputAmount(e.target.value)}
+                                                placeholder={`Amount in ${tradeDirection === 'buy' ? 'AVAX' : selectedProject.name}`}
+                                                className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
+                                                min="0"
+                                                step="0.01"
                                             />
-                                            {lastMemeOfTheDay.xLink && (
-                                                <a href={lastMemeOfTheDay.xLink} target="_blank" rel="noopener noreferrer" className="modal-link mt-2 inline-block text-lg">
-                                                    View on X
+                                        </div>
+
+                                        <div className="flex items-center justify-center text-gray-500">
+                                            <ChevronRight className="rotate-90 w-6 h-6" />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-gray-300 text-sm font-medium mb-2">
+                                                You {tradeDirection === 'buy' ? `receive (${selectedProject.name})` : 'receive (AVAX)'}
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                value={outputAmount.toFixed(4)}
+                                                readOnly
+                                                className="bg-gray-800 border border-gray-700 text-gray-300 cursor-not-allowed"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Trade Details */}
+                                    <div className="space-y-2 text-sm text-gray-400">
+                                        <div className="flex justify-between items-center">
+                                            <span>Price:</span>
+                                            <span className="font-semibold text-white">
+                                                1 {tradeDirection === 'buy' ? selectedProject.name : 'AVAX'} = {selectedProject.currentPrice.toFixed(6)} {tradeDirection === 'buy' ? 'AVAX' : selectedProject.name}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span>Slippage Tolerance:</span>
+                                            <Input
+                                                type="number"
+                                                value={slippage}
+                                                onChange={(e) => setSlippage(Math.max(0, Math.min(5, parseFloat(e.target.value))))} // Clamp between 0 and 5% for realism
+                                                step="0.1"
+                                                min="0"
+                                                max="5"
+                                                className="w-20 bg-gray-800 border border-gray-700 text-white text-right px-2 py-1"
+                                            />
+                                            <span>%</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span>Gas Fee:</span>
+                                            <span className="font-semibold text-white">{gasFee.toFixed(6)} AVAX</span>
+                                        </div>
+                                        {priceImpact > 0.0001 && (
+                                            <div className="flex justify-between items-center text-red-400">
+                                                <span>Price Impact:</span>
+                                                <span className="font-semibold">~{(priceImpact * 100).toFixed(2)}%</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Balances */}
+                                    <div className="text-sm text-gray-400 mt-4 border-t border-gray-800 pt-4">
+                                        <div className="flex justify-between items-center">
+                                            <span>Your AVAX Balance:</span>
+                                            <span className="font-semibold text-white">{userAvaxBalance.toFixed(4)} AVAX</span>
+                                        </div>
+                                        {selectedProject && (
+                                            <div className="flex justify-between items-center">
+                                                <span>Your {selectedProject.name} Balance:</span>
+                                                <span className="font-semibold text-white">
+                                                    {(userTokenBalances[selectedProject.name] || 0).toFixed(4)} {selectedProject.name}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+
+                                    {/* Swap Button */}
+                                    <Button
+                                        onClick={handleSwap}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+                                        disabled={isTrading || !selectedProject || !inputAmount || isNaN(parseFloat(inputAmount)) || parseFloat(inputAmount) <= 0}
+                                    >
+                                        {isTrading ? (
+                                            <RefreshCw className="animate-spin mr-2" />
+                                        ) : (
+                                            tradeDirection === 'buy' ? 'Swap AVAX for Token' : 'Swap Token for AVAX'
+                                        )}
+                                    </Button>
+
+                                    {/* Shill Button */}
+                                    <Button
+                                        onClick={handleShill}
+                                        className={`w-full font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 mt-2 ${userConnectedXAccount ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-600 cursor-not-allowed'}`}
+                                        disabled={!userConnectedXAccount || !selectedProject}
+                                    >
+                                        <Twitter className="mr-2 h-5 w-5" /> Shill This Meme!
+                                    </Button>
+
+                                    {/* Transaction Result */}
+                                    {transactionResult && (
+                                        <div className={`p-3 rounded-md mt-4 ${transactionResult.status === 'success' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                                            <p className="font-medium">{transactionResult.message}</p>
+                                            {transactionResult.txLink && (
+                                                <a href={transactionResult.txLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm flex items-center mt-1">
+                                                    View Transaction <ExternalLink className="ml-1 w-3 h-3" />
                                                 </a>
                                             )}
                                         </div>
-                                    ) : (
-                                        <p className="text-center text-lg text-gray-300">No meme determined yet for the last cycle (mock data).</p>
                                     )}
-                                </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                                {/* Game Statistics */}
-                                <div className="app-section">
-                                    <h2>📊 Game Statistics</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-                                        <p><span className="text-white">Total Memes:</span> {gameStats.totalMemes}</p>
-                                        <p><span className="text-white">Total Votes:</span> {gameStats.totalVotes}</p>
-                                        <p><span className="text-white">Participants:</span> {gameStats.activeParticipants}</p>
-                                        <p><span className="text-white">Cycles Done:</span> {gameStats.cyclesCompleted}</p>
-                                    </div>
-                                </div>
-
-                                {/* Current Top 3 Tokens */}
-                                <div className="app-section">
-                                    <h2>🔝 Top Tokens</h2>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                        {topTokens.map((token, index) => (
-                                            <div key={index} className="flex flex-col items-center p-4 bg-black bg-opacity-50 rounded-lg border border-0f0 shadow-md">
-                                                <img src={`https://placehold.co/${token.logo}`} alt={`${token.ticker} Logo`} className="w-16 h-16 rounded-full border border-0f0 mb-2 glow-image-thumb" />
-                                                <p className="text-xl font-bold">{token.ticker}</p>
-                                                <p className="text-sm text-gray-300">MC: {token.mc}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Phase Change Button for Testing */}
-                                <div className="app-section">
-                                    <button
-                                        onClick={togglePhase}
-                                        className="vote-btn w-auto px-8 py-3"
+                    {/* Chart Card */}
+                    <Card className="bg-gray-900 border border-blue-700 p-6 rounded-xl shadow-2xl flex flex-col">
+                        <CardContent className="p-0 flex-grow">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-bold text-blue-400 flex items-center">
+                                    <BarChart2 className="mr-2 w-6 h-6" /> {selectedProject ? `${selectedProject.name} Chart` : 'Token Chart'}
+                                </h2>
+                                {/* Price/MCap Toggle */}
+                                <div className="flex bg-gray-800 rounded-lg p-1">
+                                    <Button
+                                        onClick={() => setChartDataType('price')}
+                                        className={`px-3 py-1 text-sm ${chartDataType === 'price' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
                                     >
-                                        Toggle Phase (For Testing)
-                                    </button>
-                                </div>
-                            </>
-                        );
-                    case 'submit':
-                        return (
-                            <div className="app-section w-full max-w-2xl mx-auto">
-                                <h2>⬆️ Submit Your Meme</h2>
-                                <p className="text-green-100 mb-6">Unleash your creativity! Submit your most epic meme to compete for votes and glory.</p>
-                                { !isMemeSubmissionOpen ? ( /* Check function result */
-                                    <div ref={animationContainerRef} className="inactive-phase-container">
-                                        <img ref={bouncingImageRef} src="https://imgur.com/zPo1ir5.png" alt="Bouncing Icon" className="bouncing-image" />
-                                        <p className="text-2xl font-bold text-red-400 z-20">Submission is CLOSED!</p>
-                                        <p className="text-xl text-yellow-300 z-20">Go Vote or Check Trending Memes!</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="text-green-100 mb-4">Cost to submit: <span className="text-yellow-300 font-bold">{MEME_SUBMISSION_COST} $MOOCH</span></p>
-                                        <form onSubmit={handleSubmitMeme} className="space-y-4 text-left">
-                                            <div className="form-group">
-                                                <label htmlFor="memeTicker">Meme Ticker:</label>
-                                                <input
-                                                    type="text"
-                                                    id="memeTicker"
-                                                    value={memeTicker}
-                                                    onChange={(e) => setMemeTicker(e.target.value)}
-                                                    placeholder="e.g., AVAX, BTC"
-                                                    required
-                                                    disabled={isSubmittingMeme}
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <label htmlFor="memeName">Meme Title:</label>
-                                                <input
-                                                    type="text"
-                                                    id="memeName"
-                                                    value={memeName}
-                                                    onChange={(e) => setMemeName(e.target.value)}
-                                                    placeholder="e.g., Diamond Hands"
-                                                    required
-                                                    disabled={isSubmittingMeme}
-                                                />
-                                            </div>
-                                            <div className="form-group">
-                                                <label htmlFor="memeImage">Meme Image (PNG/JPG, max 2MB):</label>
-                                                <input
-                                                    type="file"
-                                                    id="memeImage"
-                                                    accept="image/png, image/jpeg"
-                                                    onChange={handleImageChange}
-                                                    required
-                                                    disabled={isSubmittingMeme}
-                                                />
-                                                {memeImagePreview && (
-                                                    <img src={memeImagePreview} alt="Meme Preview" className="file-preview mx-auto" />
-                                                )}
-                                            </div>
-                                            <div className="form-group">
-                                                <label htmlFor="memeDescription">Description (optional):</label>
-                                                <textarea
-                                                    id="memeDescription"
-                                                    value={memeDescription}
-                                                    onChange={(e) => setMemeDescription(e.target.value)}
-                                                    placeholder="A brief description of your meme..."
-                                                    disabled={isSubmittingMeme}
-                                                    rows="3"
-                                                ></textarea>
-                                            </div>
-                                            <div className="form-group">
-                                                <label htmlFor="memeXLink">Optional X (Twitter) Link:</label>
-                                                <input
-                                                    type="url"
-                                                    id="memeXLink"
-                                                    value={memeXLink}
-                                                    onChange={(e) => setMemeXLink(e.target.value)}
-                                                    placeholder="e.g., https://twitter.com/..."
-                                                    disabled={isSubmittingMeme}
-                                                />
-                                            </div>
-                                            <button
-                                                type="submit"
-                                                disabled={isSubmittingMeme || mockTokenBalance < MEME_SUBMISSION_COST}
-                                                className="vote-btn w-full"
-                                            >
-                                                {isSubmittingMeme ? "Submitting (Mock)..." : `Submit Meme (${MEME_SUBMISSION_COST} $MOOCH)`}
-                                            </button>
-                                        </form>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    case 'vote':
-                        return (
-                            <div className="app-section">
-                                <h2>✨ Vote for Memes</h2>
-                                {!isVotingOpen ? (
-                                    <div ref={animationContainerRef} className="inactive-phase-container">
-                                        <img ref={bouncingImageRef} src="https://imgur.com/zPo1ir5.png" alt="Bouncing Icon" className="bouncing-image" />
-                                        <p className="text-2xl font-bold text-red-400 z-20">Voting is CLOSED!</p>
-                                        <p className="text-xl text-yellow-300 z-20">Go Submit or Check Trending Memes!</p>
-                                    </div>
-                                ) : (
-                                    activeMemes.length > 0 ? (
-                                        <div className="voting-grid">
-                                            {activeMemes.map((meme, index) => (
-                                                <div 
-                                                    key={meme.id !== undefined ? meme.id : index} 
-                                                    className={`meme-card ${votedMemeId === meme.id ? 'voted-pulse' : ''}`}
-                                                >
-                                                    <img 
-                                                        src={`https://placehold.co/${meme.ipfsHash}`} 
-                                                        alt={meme.name} 
-                                                        onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x150/003300/00FF00?text=Image+Error"; }}
-                                                        onClick={() => { setSelectedMeme(meme); setShowMemeDetail(true); }}
-                                                    />
-                                                    <div>
-                                                        <p>{meme.name}</p>
-                                                        <p>Ticker: {meme.ticker}</p>
-                                                        <p>Votes: <strong id={`votes-${meme.id}`}>{meme.votes.toString()}</strong></p>
-                                                        <p>Views: {meme.views.toString()}</p>
-                                                        <p>Submitted: {meme.submissionDate}</p>
-                                                        {isVotingOpen && (
-                                                            <div className="flex flex-col items-center mt-2">
-                                                                <label htmlFor={`num-votes-${meme.id}`} className="text-sm mb-1">Votes (<span className="text-white">1 $MOOCH/vote</span>):</label>
-                                                                <input 
-                                                                    type="number" 
-                                                                    id={`num-votes-${meme.id}`} 
-                                                                    min="1" 
-                                                                    defaultValue="1" 
-                                                                    className="w-24 p-1 text-center bg-black border border-0f0 rounded-md text-0f0 font-mono"
-                                                                    onClick={e => e.stopPropagation()} /* Prevent modal from opening when clicking input */
-                                                                />
-                                                                <button
-                                                                    onClick={(e) => { 
-                                                                        e.stopPropagation(); 
-                                                                        const numVotesInput = document.getElementById(`num-votes-${meme.id}`);
-                                                                        const numVotes = parseInt(numVotesInput.value, 10);
-                                                                        handleVoteForMeme(meme.id, numVotes); 
-                                                                    }} 
-                                                                    disabled={isLoading || (mockTokenBalance < 1)} /* Disable if no mooch to vote */
-                                                                    className="vote-btn"
-                                                                >
-                                                                    ⬆️ Vote ({parseInt(document.getElementById(`num-votes-${meme.id}`)?.value || 1, 10)} $MOOCH)
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-center text-lg text-gray-300">No memes submitted for this cycle yet (mock data).</p>
-                                    )
-                                )}
-                            </div>
-                        );
-                    case 'wallet': /* Renamed from 'balance' to 'wallet' */
-                        return (
-                            <div className="app-section w-full max-w-xl mx-auto">
-                                <h2>📊 Your Wallet & Transactions</h2>
-                                <p className="text-green-100 mb-4 text-xl">Your Mock $MOOCH Balance: <span className="text-4xl font-bold text-green-300 text-shadow-[0_0_8px_rgba(0,255,0,0.7)]">{mockTokenBalance} $MOOCH</span></p>
-                                <p className="text-green-100 text-xl mb-6">Your Mock AVAX Balance: <span className="text-4xl font-bold text-green-300 text-shadow-[0_0_8px_rgba(0,255,0,0.7)]">{mockAvaxBalance.toFixed(2)} AVAX</span></p>
-
-                                <button
-                                    onClick={handleClaimTestnetTokens}
-                                    disabled={isClaimingTokens}
-                                    className="vote-btn w-full mb-4"
-                                >
-                                    {isClaimingTokens ? "Claiming..." : "Claim 1000 $MOOCH (Off-Chain Mock)"}
-                                </button>
-                                <button
-                                    onClick={approveMooch}
-                                    disabled={isLoading}
-                                    className="vote-btn w-full"
-                                >
-                                    {isLoading ? "Processing..." : "Simulate Approval (Mock)"}
-                                </button>
-
-                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">Vote & Submission History</h3>
-                                {voteHistory.length > 0 ? (
-                                    <div className="text-left max-h-60 overflow-y-auto border border-0f0 p-2 rounded">
-                                        {voteHistory.map(record => (
-                                            <p key={record.id} className="mb-1 text-sm">
-                                                <span className="text-white">{record.timestamp}:</span> Voted <span className="text-0ff">{record.votes}x</span> for <span className="text-green-300">"{record.memeName}"</span> (<span className="text-yellow-300">{record.moochSpent} $MOOCH (~${(record.moochSpent * MOOCH_PRICE_USD).toFixed(2)})</span>)
-                                            </p>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-300">No transaction history yet.</p>
-                                )}
-
-                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">Your Points</h3>
-                                <div className="text-left space-y-3">
-                                    <p className="text-green-100">Your Earned Points: <span className="text-white font-bold">{userPoints}</span></p>
-                                    <p className="text-green-100">Weekly APR: <span className="text-yellow-300 font-bold">{mockApr.toFixed(2)}%</span> (based on points)</p>
-                                </div>
-                                
-                                {/* Earn Section - Now integrated directly under Wallet */}
-                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">💰 Earn $AVAX</h3>
-                                <p className="text-green-100 mb-4">Participate in the ecosystem to earn your share of the AVAX rewards pool!</p>
-                                <div className="text-left space-y-3">
-                                    <p className="text-green-100">AVAX Pool Balance: <span className="text-white font-bold">{avaxPoolBalance.toFixed(2)} AVAX</span></p>
-                                    <p className="text-green-100">Total Community Points: <span className="text-white font-bold">{gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST}</span></p>
-                                    <p className="text-green-100">Overall Weekly APR: <span className="text-yellow-300 font-bold">{(gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST > 0 ? ((gameStats.totalVotes + gameStats.totalMemes * MEME_SUBMISSION_COST) / 1000) * 10 : 0).toFixed(2)}%</span></p>
-                                    <p className="text-green-100 mt-6">Your Claimable AVAX: <span className="text-yellow-300 font-bold">{userClaimableAvax.toFixed(2)} AVAX</span></p>
-                                    <button onClick={handleClaimAvax} disabled={isClaimingAvax || userClaimableAvax <= 0} className="vote-btn w-full">
-                                        {isClaimingAvax ? "Claiming AVAX..." : `Claim ${userClaimableAvax.toFixed(2)} AVAX`}
-                                    </button>
-                                </div>
-
-                                {/* OTC Button - Now integrated directly under Wallet */}
-                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">💱 OTC / Swap</h3>
-                                <p className="text-green-100 mb-4">Swap your AVAX for $MOOCH or other launched tokens with a 10% discount!</p>
-                                <div className="text-left space-y-3">
-                                    <p className="text-green-100">OTC Total Supply: <span className="text-white font-bold">100,000,000 $MOOCH (mock)</span></p>
-                                    <p className="text-green-100">Swap Limit: <span className="text-white font-bold">Max 100 AVAX per transaction (mock)</span></p>
-
-                                    <h4 className="text-xl mt-6">Swap AVAX to Token</h4>
-                                    <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                        <div className="form-group flex-1 w-full">
-                                            <label htmlFor="swapAvaxAmount">Amount AVAX:</label>
-                                            <input type="number" id="swapAvaxAmount" min="0.1" step="0.1" value={swapAvaxAmount} onChange={(e) => setSwapAvaxAmount(parseFloat(e.target.value) || 0)} className="w-full p-2 bg-black border border-0f0 rounded text-0f0 font-mono" max="100" />
-                                        </div>
-                                        <div className="form-group flex-1 w-full">
-                                            <label htmlFor="swapToken">Select Token:</label>
-                                            <select id="swapToken" value={selectedSwapToken} onChange={(e) => setSelectedSwapToken(e.target.value)} className="w-full p-2 bg-black border border-0f0 rounded text-0f0 font-mono">
-                                                <option value="">Select Token</option>
-                                                {launchedTokens.map(token => (
-                                                    <option key={token.ticker} value={token.ticker}>{token.ticker}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <p className="text-green-100 text-sm italic">Expected Output: <span className="text-white font-bold">{(swapAvaxAmount / AVAX_PRICE_USD / MOOCH_PRICE_USD * 1.1).toFixed(2)} {selectedSwapToken || "$MOOCH"}</span></p>
-                                    <p className="text-green-100 text-sm italic">Mock Gas Fee: <span className="text-white font-bold">~0.005 AVAX</span></p>
-                                    <p className="text-green-100 text-sm italic">Mock Slippage: <span className="text-white font-bold">0.5%</span></p>
-                                    
-                                    <button onClick={handleSwapAvaxToToken} disabled={swapAvaxAmount <= 0 || !selectedSwapToken || mockAvaxBalance < swapAvaxAmount || isLoading || swapAvaxAmount > 100} className="vote-btn w-full">
-                                        Swap Now
-                                    </button>
+                                        Price (AVAX)
+                                    </Button>
+                                    <Button
+                                        onClick={() => setChartDataType('mcap')}
+                                        className={`px-3 py-1 text-sm ${chartDataType === 'mcap' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                                    >
+                                        MCap (USD)
+                                    </Button>
                                 </div>
                             </div>
-                        );
-                    case 'trending':
-                        return (
-                            <div className="app-section">
-                                <h2>📈 Trending Memes</h2>
-                                {trendingMemes.length > 0 ? (
-                                    <div className="voting-grid">
-                                        {trendingMemes.map((meme, index) => (
-                                            <div 
-                                                key={meme.id !== undefined ? meme.id : index} 
-                                                className="meme-card"
-                                                onClick={() => { setSelectedMeme(meme); setShowMemeDetail(true); }}
-                                            >
-                                                <img 
-                                                    src={`https://placehold.co/${meme.ipfsHash}`} 
-                                                    alt={meme.name} 
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/200x150/003300/00FF00?text=Image+Error"; }}
-                                                />
-                                                <div>
-                                                    <p>{meme.name}</p>
-                                                    <p>Ticker: {meme.ticker}</p>
-                                                    <p>Votes: <strong>{meme.votes.toString()}</strong></p>
-                                                    <p>Views: {meme.views.toString()}</p>
-                                                </div>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleVoteForMeme(meme.id); }} 
-                                                    disabled={!isVotingOpen || isLoading || (mockTokenBalance < 1)}
-                                                    className="vote-btn"
-                                                >
-                                                    ⬆️ Vote
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-lg text-gray-300">No memes currently trending (mock data).</p>
-                                )}
 
-                                <h3 className="text-2xl mt-8 mb-4 text-left border-b border-0f0 pb-2">Recent Activity</h3>
-                                {activityFeed.length > 0 ? (
-                                    <div className="text-left max-h-60 overflow-y-auto border border-0f0 p-2 rounded">
-                                        {activityFeed.map(activity => (
-                                            <p key={activity.id} className="mb-1 text-sm">
-                                                <span className="text-white">{activity.timestamp}:</span> User <span className="text-0ff">{activity.user.substring(0, 8)}...</span> {activity.action} <span className="text-green-300">"{activity.memeName}"</span>
-                                            </p>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-300">No recent activity.</p>
-                                )}
-                            </div>
-                        );
-                    case 'about':
-                        return (
-                            <div className="app-section w-full max-w-2xl mx-auto">
-                                <h2>ℹ️ About Mooch Runner</h2>
-                                <p className="text-green-100 mb-4">
-                                    Mooch Runner is a decentralized application (dApp) for meme enthusiasts to submit, vote on, and celebrate the best memes! 
-                                    This version is a UI demonstration with mock data and functionality.
-                                </p>
-                                <p className="text-green-100 mb-4">
-                                    Participants can submit memes during the submission phase, and then vote for their favorite memes and tokens ($MOOCH) during the voting phase. 
-                                    At the end of each cycle, a winning meme is declared!
-                                </p>
-                                <h3 className="text-2xl mt-6 mb-4 flex items-center justify-center gap-2">
-                                    🚀 How It Works
-                                </h3>
-                                <ul className="text-left list-disc list-inside space-y-2 text-green-100">
-                                    <li><strong>1. Connect Wallet:</strong> Join with MetaMask or other EVM wallets</li>
-                                    <li><strong>2. Submit Memes:</strong> Upload the funniest memes to compete</li>
-                                    <li><strong>3. Vote Daily:</strong> Support your favorite memes and creators</li>
-                                    <li><strong>4. Earn $MOOCH:</strong> Top memes win and earn real rewards</li>
-                                </ul>
-
-                                <h3 className="text-2xl mt-6 mb-4 flex items-center justify-center gap-2">
-                                    🤝 Community
-                                </h3>
-                                <div className="flex justify-center items-center space-x-6">
-                                    <a href="https://x.com/MoochonAvax" target="_blank" rel="noopener noreferrer" className="text-green-300 hover:text-white transition-colors duration-200">
-                                        {/* Twitter (X) Logo SVG */}
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 drop-shadow-[0_0_8px_#0f0]">
-                                            <path d="M18.244 2.25h3.308l-7.227 8.260 8.017 11.740h-6.765l-6.23-9.110-3.328 9.110h-3.308l7.227-8.260-8.017-11.740h6.765l6.23 9.110zM12 1.5l-8 11.5 8 10.5 8-10.5-8-11.5zM12 2.5l7 10 7-9 7 9-7 10-7-9-7 10zM12 3.5l6 9.5 6-8.5 6 8.5-6 9.5-6-8.5-6 9.5zM12 4.5l5 8.5 5-7.5 5 7.5-5 8.5-5-7.5-5 8.5z"/>
-                                            <path d="M18.244 2.25h3.308l-7.227 8.260 8.017 11.740h-6.765l-6.23-9.110-3.328 9.110h-3.308l7.227-8.260-8.017-11.740h6.765l6.23 9.110z" />
-                                        </svg>
-                                    </a>
-                                    <a href="https://t.me/themoochonavax" target="_blank" rel="noopener noreferrer" className="text-green-300 hover:text-white transition-colors duration-200">
-                                        {/* Telegram Logo SVG (simplified) */}
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 drop-shadow-[0_0_8px_#0f0]">
-                                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6.65 8.59l-2.43 11.45c-.173.815-.662.982-1.315.603l-3.955-2.903-1.918 1.84c-.21.203-.38.36-.75.36l.2-.953 1.89-6.02L7.87 9.155c-.75-.68-.16-1.04.57-.79l10.37 4.025c.67.27.18.5-.14.63z"/>
-                                        </svg>
-                                    </a>
+                            {selectedProject ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <AreaChart data={projectChartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                                        <XAxis dataKey="time" stroke="#999" />
+                                        <YAxis
+                                            stroke="#999"
+                                            domain={['auto', 'auto']}
+                                            tickFormatter={(value) => chartDataType === 'price' ? value.toFixed(4) : `$${(value / 1000).toFixed(0)}K`}
+                                        />
+                                        <Tooltip content={CustomTooltip} />
+                                        <defs>
+                                            {/* Green if price increased, Red if price decreased from previous point */}
+                                            <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <Area
+                                            type="monotone"
+                                            dataKey={chartDataType}
+                                            stroke={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} // Green if up, Red if down from last trade
+                                            fillOpacity={1}
+                                            fill="url(#colorArea)"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p className="text-gray-500 text-center py-20">Select a token to view its chart.</p>
+                            )}
+                            {selectedProject && (
+                                <div className="text-center mt-4 text-gray-300">
+                                    Current Price: <span className="font-bold text-white">
+                                        {selectedProject.currentPrice.toFixed(6)} AVAX
+                                        {selectedProject.priceChange > 0 && <TrendingUp className="inline-block ml-1 w-4 h-4 text-green-400" />}
+                                        {selectedProject.priceChange < 0 && <TrendingDown className="inline-block ml-1 w-4 h-4 text-red-400" />}
+                                        {selectedProject.priceChange === 0 && selectedProject.currentPrice === selectedProject.tokenPrice && <span className="ml-1 text-gray-500"> (Initial)</span>}
+                                    </span>
                                 </div>
-                                <p className="text-green-100 text-sm italic mt-6">
-                                    Disclaimer: All blockchain interactions, token values, and image storage are simulated in this demo.
-                                </p>
-                            </div>
-                        );
-                    default:
-                        return null;
-                }
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            <footer className="text-center text-sm text-gray-500 pt-16 border-t border-gray-800 mt-12">
+                <p>&copy; {new Date().getFullYear()} Mooch. All rights reserved.</p>
+                <p className="mt-1">Mooch retains 3% of each successfully launched project. All applications undergo thorough review.</p>
+            </footer>
+        </div>
+    );
+};
+
+
+// --- Main App Component ---
+export default function App() {
+  const [projects, setProjects] = useState([
+    {
+      name: "Project Orbit",
+      shortDesc: "A DeFi lending protocol on Avalanche, focused on decentralized stablecoin loans.",
+      fullDescription: "Project Orbit aims to revolutionize DeFi lending by providing a secure, transparent, and highly efficient platform for decentralized stablecoin loans on the Avalanche blockchain. It features dynamic interest rates, flash loans, and a robust risk management framework, governed by its community.",
+      moochBurned: true,
+      status: "Voting", // Starts ready for voting
+      votes: 1250,
+      presaleTarget: 250,
+      minContribution: 10,
+      maxContributionPerUser: 250,
+      tokenPrice: 0.005,
+      currentPrice: 0.005,
+      circulatingSupply: 100000000, // Adjusted supply for more realistic percentage changes
+      tokenAllocation: [ // NEW: Token allocation definition
+          { name: "INTEGRITY DAO", percentage: 5 },
+          { name: "MONEYBEARS DAO", percentage: 5 },
+          { name: "Project Team", percentage: 15 },
+          { name: "Liquidity Pool", percentage: 20 },
+      ],
+      auditStatus: "Audited by CertiK",
+      websiteUrl: "https://projectorbit.xyz",
+      whitepaperUrl: "https://projectorbit.xyz/whitepaper.pdf",
+      currentContributions: 0,
+      userContributions: {},
+      priceChange: 0, // Track last price change for UI indicator
+      shillCount: 15,
+      shillScore: 15 * SHILL_SCORE_INCREMENT,
+      totalMoochBurned: 1000000,
+    },
+    {
+      name: "MetaVerse Eats",
+      shortDesc: "Food delivery NFTs linked to real meals, enhancing virtual-to-real experiences.",
+      fullDescription: "MetaVerse Eats bridges the gap between virtual and real-world dining. Purchase an NFT that is redeemable for a gourmet meal delivered to your door. Each NFT includes unique digital art and exclusive access to virtual dining events within the metaverse, creating a truly immersive experience.",
+      moochBurned: false,
+      status: "Pending Burn", // Starts pending burn
+      votes: 0,
+      presaleTarget: 250,
+      minContribution: 10,
+      maxContributionPerUser: 250,
+      tokenPrice: 0.001,
+      currentPrice: 0.001,
+      circulatingSupply: 500000000,
+      tokenAllocation: [
+          { name: "INTEGRITY DAO", percentage: 5 },
+          { name: "MONEYBEARS DAO", percentage: 5 },
+          { name: "Project Team", percentage: 15 },
+          { name: "Liquidity Pool", percentage: 20 },
+      ],
+      auditStatus: "Not Applicable (NFT only)",
+      websiteUrl: "https://metaverse-eats.com",
+      whitepaperUrl: "https://metaverse-eats.com/concept.pdf",
+      currentContributions: 0,
+      userContributions: {},
+      priceChange: 0,
+      shillCount: 0,
+      shillScore: 0,
+      totalMoochBurned: 0,
+    },
+    {
+      name: "Quantum Ledger",
+      shortDesc: "A secure, quantum-resistant blockchain for supply chain management.",
+      fullDescription: "Quantum Ledger is developing the next generation of blockchain technology, designed to be resistant to quantum computing attacks. Its primary application is in supply chain management, offering unparalleled security and transparency for tracking goods from origin to consumer.",
+      moochBurned: true,
+      status: "Under Review",
+      votes: 0,
+      presaleTarget: 0,
+      minContribution: 0,
+      maxContributionPerUser: 0,
+      tokenPrice: 0.0001,
+      currentPrice: 0.0001,
+      circulatingSupply: 1000000000,
+      tokenAllocation: [
+          { name: "INTEGRITY DAO", percentage: 5 },
+          { name: "MONEYBEARS DAO", percentage: 5 },
+          { name: "Project Team", percentage: 15 },
+          { name: "Liquidity Pool", percentage: 20 },
+      ],
+      auditStatus: "In Progress",
+      websiteUrl: "https://quantumledger.io",
+      whitepaperUrl: "https://quantumledger.io/overview.pdf",
+      currentContributions: 0,
+      userContributions: {},
+      priceChange: 0,
+      shillCount: 5,
+      shillScore: 5 * SHILL_SCORE_INCREMENT,
+      totalMoochBurned: 1000000,
+    },
+    {
+      name: "AI Art Forge",
+      shortDesc: "Platform for creating and trading AI-generated art as NFTs with creator royalties.",
+      fullDescription: "AI Art Forge empowers artists and collectors alike by providing a seamless platform for generating unique AI-driven digital art and minting it as NFTs. It features built-in smart contracts to ensure perpetual royalties for creators on secondary sales.",
+      moochBurned: true,
+      status: "Voting",
+      votes: 890,
+      presaleTarget: 250,
+      minContribution: 10,
+      maxContributionPerUser: 250,
+      tokenPrice: 0.008,
+      currentPrice: 0.008,
+      circulatingSupply: 200000000,
+      tokenAllocation: [
+          { name: "INTEGRITY DAO", percentage: 5 },
+          { name: "MONEYBEARS DAO", percentage: 5 },
+          { name: "Project Team", percentage: 15 },
+          { name: "Liquidity Pool", percentage: 20 },
+      ],
+      auditStatus: "Audited by PeckShield",
+      websiteUrl: "https://aiartforge.art",
+      whitepaperUrl: "https://aiartforge.art/vision.pdf",
+      currentContributions: 0,
+      userContributions: {},
+      priceChange: 0,
+      shillCount: 10,
+      shillScore: 10 * SHILL_SCORE_INCREMENT,
+      totalMoochBurned: 1000000,
+    },
+  ]);
+
+  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDesc, setNewProjectDesc] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [userHasMoochNFT, setUserHasMoochNFT] = useState(false);
+  const [userConnectedXAccount, setUserConnectedXAccount] = useState(false);
+  const [viewMode, setViewMode] = useState("arena");
+
+  const [userAvaxBalance, setUserAvaxBalance] = useState(1000);
+  const [userTokenBalances, setUserTokenBalances] = useState({});
+
+  // --- Project Management Handlers ---
+  const handleProjectSubmit = (e) => {
+    e.preventDefault();
+    if (newProjectName && newProjectDesc) {
+      const newProject = {
+        name: newProjectName,
+        shortDesc: newProjectDesc,
+        fullDescription: "Awaiting full description and detailed presale information. Please check back after Mooch has been burned and the project has been reviewed.",
+        moochBurned: false,
+        status: "Pending Burn",
+        votes: 0,
+        presaleTarget: 250,
+        minContribution: 10,
+        maxContributionPerUser: 250,
+        tokenPrice: 0.01,
+        currentPrice: 0.01,
+        circulatingSupply: 100000000, // Default circulating supply for new projects
+        tokenAllocation: [ // Default allocation for new projects
+            { name: "INTEGRITY DAO", percentage: 5 },
+            { name: "MONEYBEARS DAO", percentage: 5 },
+            { name: "Project Team", percentage: 15 },
+            { name: "Liquidity Pool", percentage: 20 },
+        ],
+        auditStatus: "Pending Review",
+        websiteUrl: "",
+        whitepaperUrl: "",
+        currentContributions: 0,
+        userContributions: {},
+        priceChange: 0,
+        shillCount: 0,
+        shillScore: 0,
+        totalMoochBurned: 0,
+      };
+      setProjects([...projects, newProject]);
+      setNewProjectName("");
+      setNewProjectDesc("");
+      setShowSubmissionForm(false);
+      console.log(`Project "${newProject.name}" submitted! Please burn 1M $Mooch to proceed.`);
+    } else {
+      console.error("Please fill in both project name and description.");
+    }
+  };
+
+  const handleBurnMooch = (projectName) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project =>
+        project.name === projectName
+          ? { ...project, moochBurned: true, status: "Submitted", totalMoochBurned: (project.totalMoochBurned || 0) + 1000000 }
+          : project
+      )
+    );
+    setSelectedProject(prevProject =>
+      prevProject && prevProject.name === projectName
+        ? { ...prevProject, moochBurned: true, status: "Submitted", totalMoochBurned: (prevProject.totalMoochBurned || 0) + 1000000 }
+        : prevProject
+    );
+    console.log(`1M $Mooch burned for "${projectName}"! Project is now submitted.`);
+  };
+
+  const handleSendForReview = (projectName) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project =>
+        project.name === projectName
+          ? { ...project, status: "Under Review" }
+          : project
+      )
+    );
+    setSelectedProject(prevProject =>
+      prevProject && prevProject.name === projectName
+        ? { ...prevProject, status: "Under Review" }
+        : prevProject
+    );
+    console.log(`Project "${projectName}" sent for Money Bears review.`);
+  };
+
+  const handleAcceptReview = (projectName) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project =>
+        project.name === projectName
+          ? { ...project, status: "Voting", shillScore: Math.floor(Math.random() * 50) + 50 }
+          : project
+      )
+    );
+    setSelectedProject(prevProject =>
+      prevProject && prevProject.name === projectName
+        ? { ...prevProject, status: "Voting", shillScore: Math.floor(Math.random() * 50) + 50 }
+        : prevProject
+    );
+    console.log(`Money Bears accepted "${projectName}"! It's now in Voting.`);
+  };
+
+
+  const handleSimulatePresale = (projectName) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project =>
+        project.name === projectName
+          ? { ...project, status: "Presale Active" }
+          : project
+      )
+    );
+    setSelectedProject(prevProject =>
+      prevProject && prevProject.name === projectName
+        ? { ...prevProject, status: "Presale Active" }
+        : prevProject
+    );
+    console.log(`Presale launched for "${projectName}"!`);
+  };
+
+  const handleContribute = (projectName, amount, userId) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project => {
+        if (project.name === projectName) {
+          const newCurrentContributions = project.currentContributions + amount;
+          const newUserContributions = {
+              ...project.userContributions,
+              [userId]: (project.userContributions[userId] || 0) + amount
+          };
+          let newStatus = project.status;
+          if (newCurrentContributions >= project.presaleTarget && project.status !== "Launched") {
+            newStatus = "Launched";
+            console.log(`Congratulations! "${projectName}" has been officially Launched!`);
+          }
+          const tokensReceived = (amount / project.tokenPrice);
+          setUserTokenBalances(prevBalances => ({
+              ...prevBalances,
+              [projectName]: (prevBalances[projectName] || 0) + tokensReceived
+          }));
+          setUserAvaxBalance(prevAvax => prevAvax - amount);
+
+          return {
+            ...project,
+            currentContributions: newCurrentContributions,
+            userContributions: newUserContributions,
+            status: newStatus,
+          };
+        }
+        return project;
+      })
+    );
+    setSelectedProject(prevProject => {
+        if (prevProject && prevProject.name === projectName) {
+            const newCurrentContributions = prevProject.currentContributions + amount;
+            const newUserContributions = {
+                ...prevProject.userContributions,
+                [userId]: (prevProject.userContributions[userId] || 0) + amount
             };
+            let newStatus = prevProject.status;
+            if (newCurrentContributions >= prevProject.presaleTarget && prevProject.status !== "Launched") {
+                newStatus = "Launched";
+            }
+            return {
+                ...prevProject,
+                currentContributions: newCurrentContributions,
+                userContributions: newUserContributions,
+                status: newStatus,
+            };
+        }
+        return prevProject;
+    });
+  };
 
-            return (
-                <>
-                    {/* Notifications Display */}
-                    <div id="notifications-container">
-                        {notifications.map(notification => (
-                            <div 
-                                key={notification.id} 
-                                className={`notification ${notification.type}`}
-                            >
-                                {notification.message}
-                            </div>
+  const handleShillProject = useCallback((projectName) => {
+      setProjects(prevProjects =>
+          prevProjects.map(project =>
+              project.name === projectName
+                  ? {
+                      ...project,
+                      shillCount: (project.shillCount || 0) + 1,
+                      shillScore: ((project.shillCount || 0) + 1) * SHILL_SCORE_INCREMENT
+                    }
+                  : project
+          )
+      );
+      console.log(`Shilled "${projectName}"! Shill Score increased.`);
+  }, []);
+
+  const handlePerformTrade = useCallback((
+    projectName,
+    tradeDirection,
+    inputAmount,
+    outputAmount,
+    gasFee,
+    priceChange
+  ) => {
+    setProjects(prevProjects =>
+      prevProjects.map(project => {
+        if (project.name === projectName) {
+          const newCurrentPrice = Math.max(0.000001, project.currentPrice + priceChange);
+          return {
+            ...project,
+            currentPrice: newCurrentPrice,
+            priceChange: priceChange
+          };
+        }
+        return project;
+      })
+    );
+
+    setUserAvaxBalance(prevAvax => {
+      if (tradeDirection === 'buy') {
+        return prevAvax - inputAmount - gasFee;
+      } else { // sell
+        return prevAvax + outputAmount - gasFee;
+      }
+    });
+
+    setUserTokenBalances(prevTokens => {
+      const newTokens = { ...prevTokens };
+      if (tradeDirection === 'buy') {
+        newTokens[projectName] = (newTokens[projectName] || 0) + outputAmount;
+      } else { // sell
+        newTokens[projectName] = (newTokens[projectName] || 0) - inputAmount;
+      }
+      return newTokens;
+    });
+  }, []);
+
+  const filteredProjects = projects.filter(project =>
+    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    project.shortDesc.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const launchedProjects = projects.filter(project => project.status === "Launched");
+
+  const burnLeaderboard = [...projects].sort((a, b) => b.totalMoochBurned - a.totalMoochBurned);
+
+  const shillLeaderboard = [...projects]
+    .filter(p => p.shillScore > 0)
+    .sort((a, b) => b.shillScore - a.shillScore)
+    .slice(0, 10);
+
+  if (viewMode === "trade") {
+    return (
+        <TradeLaunchedMemes
+            launchedProjects={launchedProjects}
+            onBackToArena={() => setViewMode("arena")}
+            userAvaxBalance={userAvaxBalance}
+            userTokenBalances={userTokenBalances}
+            onPerformTrade={handlePerformTrade}
+            userConnectedXAccount={userConnectedXAccount}
+            onShillProject={handleShillProject}
+        />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-6 space-y-12 font-sans">
+      <div className="text-center space-y-4 pt-8">
+        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 drop-shadow-lg animate-pulse">
+          🔥 Mooch Launch Arena
+        </h1>
+        <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
+          Submit your innovative project and burn 1M $Mooch to enter the arena. Community votes the best for presale.
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-center gap-4 my-8">
+        <Button
+          onClick={() => setShowSubmissionForm(!showSubmissionForm)}
+          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+        >
+          <Lightbulb className="mr-2 h-5 w-5" />
+          {showSubmissionForm ? "Close Submission" : "Submit New Project"}
+        </Button>
+        <Button
+          variant="outline"
+          className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:border-gray-500 py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+        >
+          <BarChart2 className="mr-2 h-5 w-5" />
+          View Current Voting
+        </Button>
+        <Button
+            variant="secondary"
+            className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+            onClick={() => setViewMode("trade")}
+        >
+            🚀 Trade Launched Memes
+        </Button>
+      </div>
+
+      <div className="text-center my-6 space-y-2">
+          <p className="text-gray-300 text-sm">
+            1 $Mooch = <span className="font-bold text-green-400">${MOOCH_USD_PRICE.toFixed(8)}</span>
+          </p>
+          {/* NFT and X Account Status */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 items-center mt-4">
+            <Button
+                onClick={() => setUserHasMoochNFT(!userHasMoochNFT)}
+                className={`font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ${userHasMoochNFT ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+            >
+                {userHasMoochNFT ? '✅ Mooch NFT in Wallet' : '❌ Mooch NFT Not Found'}
+            </Button>
+            <Button
+                onClick={() => setUserConnectedXAccount(!userConnectedXAccount)}
+                className={`font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ${userConnectedXAccount ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-500 hover:bg-gray-600'}`}
+            >
+                <Twitter className="mr-2 h-5 w-5" /> {userConnectedXAccount ? 'X Account Connected' : 'Connect X Account'}
+            </Button>
+          </div>
+          <p className="text-gray-400 text-sm mt-2">Toggle states to simulate wallet connections.</p>
+          <p className="text-gray-400 text-sm mt-1">Your AVAX Balance: <span className="font-semibold text-white">{userAvaxBalance.toFixed(4)} AVAX</span></p>
+          {Object.keys(userTokenBalances).length > 0 && (
+              <p className="text-gray-400 text-sm mt-1">Your Tokens:
+                  {Object.entries(userTokenBalances).map(([tokenName, balance]) => (
+                      <span key={tokenName} className="font-semibold text-white ml-2">
+                          {balance.toFixed(4)} {tokenName}
+                      </span>
+                  ))}
+              </p>
+          )}
+      </div>
+
+
+      {showSubmissionForm && (
+        <Card className="bg-gray-900 border border-purple-700 p-6 max-w-xl mx-auto shadow-2xl rounded-xl animate-fade-in">
+          <CardContent>
+            <h2 className="text-2xl font-bold text-center mb-6 text-purple-400">Submit Your Project</h2>
+            <form onSubmit={handleProjectSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="projectName" className="block text-gray-300 text-sm font-medium mb-2">Project Name</label>
+                <Input
+                  id="projectName"
+                  type="text"
+                  placeholder="e.g., Decentralized AI Hub"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500 focus:ring-1"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="projectDesc" className="block text-gray-300 text-sm font-medium mb-2">Short Description</label>
+                <Textarea
+                  id="projectDesc"
+                  placeholder="Briefly describe your project's innovation and purpose."
+                  value={newProjectDesc}
+                  onChange={(e) => setNewProjectDesc(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 min-h-[80px] focus:border-purple-500 focus:ring-purple-500 focus:ring-1"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
+              >
+                Submit Project
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mooch Burn Leaderboard */}
+      <div className="max-w-3xl mx-auto bg-gray-900 border border-yellow-700 p-6 rounded-xl shadow-2xl space-y-4">
+        <h2 className="text-2xl font-bold text-center text-yellow-400 flex items-center justify-center">
+            🔥 Mooch Burn Leaderboard
+        </h2>
+        {burnLeaderboard.length > 0 ? (
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                        <tr>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tl-lg">
+                                Project
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                $Mooch Burned
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tr-lg">
+                                Value (USD)
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {burnLeaderboard.map((project, index) => (
+                            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'} hover:bg-gray-700 transition-colors`}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
+                                    {project.name}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-400">
+                                    {project.totalMoochBurned.toLocaleString()}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-green-400">
+                                    ${(project.totalMoochBurned * MOOCH_USD_PRICE).toFixed(2)}
+                                </td>
+                            </tr>
                         ))}
-                    </div>
+                    </tbody>
+                </table>
+            </div>
+        ) : (
+            <p className="text-center text-gray-500">No projects have burned Mooch yet. Be the first!</p>
+        )}
+      </div>
 
-                    {/* "You've been Mooch'd!" animation overlay (for voting) */}
-                    {showMoochedAnimation && (
-                        <div id="mooched-animation-container">
-                            <h2 className="mooched-message">YOU'VE BEEN MOOCH'D!</h2>
-                        </div>
-                    )}
-
-                    {/* "You have Mooch'd a meme" animation overlay (for submission) */}
-                    {showMoochdMemeAnimation && (
-                        <div id="moochd-meme-animation-container">
-                            <h2 className="moochd-meme-message">YOU HAVE MOOCH'D A MEME!</h2>
-                        </div>
-                    )}
-
-                    {/* Wallet Settings Modal (conditionally rendered) */}
-                    {showWalletModal && (
-                        <WalletSettingsModal 
-                            account={account} 
-                            chainId={chainId} 
-                            onDisconnect={disconnectWallet} 
-                            onClose={() => setShowWalletModal(false)} 
-                            MOOCH_PRICE_USD={MOOCH_PRICE_USD} /* Pass prices to modal */
-                            AVAX_PRICE_USD={AVAX_PRICE_USD}
-                            mockTokenBalance={mockTokenBalance}
-                            mockAvaxBalance={mockAvaxBalance}
-                        />
-                    )}
-
-                    {/* The entire application UI is rendered here */}
-                    <header>
-                        <div className="header-logo-title-wrap">
-                            <img src="https://imgur.com/roCgcDm.png" alt="Mooch Runner Logo" />
-                            <h1>MOOCH RUNNER</h1>
-                            <p class="header-tagline">Vote • Submit • Earn $MOOCH</p>
-                        </div>
-                        {/* Header Timer & Phase Display */}
-                        <div class="header-timer-info">
-                            <p>Phase: <span className="text-green-300">{currentCycleStatus}</span></p>
-                            <div className="timer-box">
-                                <div className="clock">
-                                    <FlipDisplay value={String(hours).padStart(2, '0')} />
-                                    <span className="text-0f0 text-lg font-orbitron">:</span>
-                                    <FlipDisplay value={String(minutes).padStart(2, '0')} />
-                                    <span className="text-0f0 text-lg font-orbitron">:</span>
-                                    <FlipDisplay value={String(seconds).padStart(2, '0')} />
-                                </div>
-                            </div>
-                        </div>
-                        {/* User Profile Icon */}
-                        <div class="profile-icon" onClick={() => setShowWalletModal(true)}>M</div>
-                    </header>
-
-                    <div id="live-vote-track-container">
-                        <div className="live-vote-track-inner">
-                            {liveVoteNotifications.map(notification => (
-                                <div key={notification.id} className="live-vote-slide">
-                                    {notification.message}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <nav>
-                        {['HOME', 'VOTE', 'SUBMIT MEME', 'WALLET', 'TRENDING', 'ABOUT'].map(label => (
-                            <button
-                                key={label}
-                                onClick={() => setActiveTab(label.toLowerCase())}
-                                className={`font-bold py-3 px-6 rounded-full transition-all duration-300 ${activeTab.toUpperCase() === label ? 'active-nav' : ''}`}
-                            >
-                                {label}
-                            </button>
+      {/* Shill Score Leaderboard */}
+      <div className="max-w-3xl mx-auto bg-gray-900 border border-pink-700 p-6 rounded-xl shadow-2xl space-y-4">
+        <h2 className="text-2xl font-bold text-center text-pink-400 flex items-center justify-center">
+            📈 Shill Score Leaderboard (Top 10)
+        </h2>
+        {shillLeaderboard.length > 0 ? (
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                        <tr>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tl-lg">
+                                Rank
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Project
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tr-lg">
+                                Shill Score
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {shillLeaderboard.map((project, index) => (
+                            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'} hover:bg-gray-700 transition-colors`}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    #{index + 1}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
+                                    {project.name}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-pink-400">
+                                    {project.shillScore}
+                                </td>
+                            </tr>
                         ))}
-                    </nav>
+                    </tbody>
+                </table>
+            </div>
+        ) : (
+            <p className="text-center text-gray-500">No projects have a shill score yet. Shill a meme to get started!</p>
+        )}
+      </div>
 
-                    <main>
-                        {!account ? (
-                            <div className="app-section w-full max-w-md text-center mx-auto">
-                                <h2 className="mb-6">CONNECT WALLET</h2>
-                                <p className="text-green-100 mb-6">Connect your wallet to participate in the Mooch Runner DApp.</p>
-                                <button
-                                    onClick={connectWallet}
-                                    className="vote-btn w-full"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? "Connecting..." : "Connect Wallet (Mock)"}
-                                </button>
-                                {message && <p className="mt-4 text-sm text-green-300">{message}</p>}
-                            </div>
-                        ) : (
-                            <div className="w-full max-w-full">
-                                {renderContent()}
-                            </div>
-                        )}
-                    </main>
+      <div className="relative max-w-lg mx-auto mb-8">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Search projects..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-lg focus:border-purple-500 focus:ring-purple-500 focus:ring-1 shadow-inner transition-all duration-200"
+        />
+      </div>
 
-                    <footer>
-                        &copy; 2025 Mooch Runner | Built for Degens by Degens 🧠
-                    </footer>
-                </>
-            );
-        };
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {filteredProjects.length > 0 ? (
+          filteredProjects.map((project, idx) => (
+            <Card
+              key={idx}
+              className="bg-gray-900 border border-gray-700 hover:border-purple-500 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg group"
+            >
+              <CardContent className="p-6 space-y-3">
+                <h2 className="text-2xl font-bold text-purple-300 group-hover:text-purple-400 transition-colors duration-300 flex items-center">
+                  {project.name}
+                </h2>
+                <p className="text-gray-400 text-base leading-relaxed line-clamp-3">{project.shortDesc}</p>
+                <div className="flex items-center gap-2 text-sm mt-3">
+                  <span className="text-yellow-400 font-medium flex items-center">
+                    <Lightbulb className="w-4 h-4 mr-1" />
+                    Status: <span className="ml-1 font-semibold">{project.status}</span>
+                  </span>
+                </div>
+                {project.moochBurned ? (
+                  <p className="text-sm text-green-400 flex items-center mt-1">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    1M Mooch Burned
+                  </p>
+                ) : (
+                  <p className="text-sm text-red-400 flex items-center mt-1">
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Mooch Burn Pending
+                  </p>
+                )}
+                 {/* Display Shill Score on cards */}
+                {project.shillScore > 0 && (
+                    <p className="text-sm text-pink-400 flex items-center mt-1">
+                        <Scale className="w-4 h-4 mr-1" />
+                        Shill Score: {project.shillScore}
+                    </p>
+                )}
+                {(project.status === "Voting" || project.status === "Presale Active") && (
+                  <p className="text-sm text-blue-400 flex items-center mt-1">
+                    <BarChart2 className="w-4 h-4 mr-1" />
+                    Votes: {project.votes.toLocaleString()}
+                  </p>
+                )}
+                {project.status === "Presale Active" && (
+                    <p className="text-sm text-lime-400 flex items-center mt-1">
+                        <DollarSign className="w-4 h-4 mr-1" />
+                        Raised: ${project.currentContributions.toLocaleString()} / ${project.presaleTarget.toLocaleString()} AVAX
+                    </p>
+                )}
+                {project.status === "Launched" && (
+                    <p className="text-sm text-green-400 flex items-center mt-1 font-semibold">
+                        <TrendingUp className="w-4 h-4 mr-1" /> Launched!
+                    </p>
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-center">
+                    <Button
+                        variant="ghost"
+                        className="text-purple-400 hover:bg-purple-900 hover:text-white transition-colors duration-200"
+                        onClick={() => setSelectedProject(project)}
+                    >
+                        View Details
+                    </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="col-span-full text-center text-gray-500 text-lg py-10">
+            No projects found matching your search.
+          </p>
+        )}
+      </div>
 
-        // Initial render of the App component into the #root div
-        ReactDOM.render(<App />, document.getElementById('root-container'));
-    </script>
-</body>
-</html>
+      <ProjectDetailsModal
+        project={selectedProject}
+        onClose={() => setSelectedProject(null)}
+        onBurnMooch={handleBurnMooch}
+        onSimulatePresale={handleSimulatePresale}
+        onContribute={handleContribute}
+        userHasMoochNFT={userHasMoochNFT}
+        onSendForReview={handleSendForReview}
+        onAcceptReview={handleAcceptReview}
+      />
+
+      <footer className="text-center text-sm text-gray-500 pt-16 border-t border-gray-800 mt-12">
+        <p>&copy; {new Date().getFullYear()} Mooch. All rights reserved.</p>
+        <p className="mt-1">Mooch retains 3% of each successfully launched project. All applications undergo thorough review.</p>
+      </footer>
+    </div>
+  );
+}
