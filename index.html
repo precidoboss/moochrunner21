@@ -1,1501 +1,1208 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // FIXED: Corrected import syntax
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
-import { CheckCircle, XCircle, BarChart2, Lightbulb, Search, ExternalLink, ScrollText, DollarSign, Wallet, Verified, TrendingUp, ArrowLeft, Gem, RefreshCw, HandCoins, ChevronRight, TrendingDown, Clock, Scale, Twitter, Users } from "lucide-react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena.Social - Decentralized Engagement</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Phosphor Icons (for professional-looking icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    <style>
+        /* Custom professional black/white theme */
+        :root {
+            --primary: #000000;
+            --secondary: #ffffff;
+        }
 
-// Constants
-const AVAX_USD_PRICE = 19; // 1 AVAX is $19
-const MOOCH_USD_PRICE = 0.00001541; // 1 Mooch is $0.00001541
-const SIMULATED_GAS_FEE_AVAX = 0.002; // Fixed simulated gas fee in AVAX
-const PRICE_IMPACT_FACTOR_TRADE = 0.00005; // Base factor for price change on trade
-const SHILL_SCORE_INCREMENT = 5; // How much shill score increases per 'shill' action
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--secondary);
+            color: var(--primary);
+            min-height: 100vh;
+        }
 
-// Helper to generate a dummy transaction hash
-const generateTxHash = () => {
-    return '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-};
+        /* Utility for the active section */
+        .page-section {
+            display: none;
+            padding-top: 5rem; /* Space for the header */
+        }
+        .page-section.active {
+            display: block;
+        }
 
-// --- ProjectDetailsModal Component ---
-const ProjectDetailsModal = ({ project, onClose, onBurnMooch, onSimulatePresale, onContribute, userHasMoochNFT, onSendForReview, onAcceptReview }) => {
-  const [userContributedAmount, setUserContributedAmount] = useState(0);
-  const [contributionAmountInput, setContributionAmountInput] = useState("");
-  const [showHolders, setShowHolders] = useState(false); // State to toggle holders section
+        /* Custom scrollbar for minimalist look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #000000;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background-color: #ffffff;
+        }
 
-  // Calculate token holder allocations - MOVED OUTSIDE CONDITIONAL RENDER
-  // Hooks must be called in the same order on every render.
-  const calculateHolderAllocations = useCallback(() => {
-      if (!project || !project.circulatingSupply || !project.tokenAllocation) return [];
+        /* Modal specific styling */
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+    </style>
+</head>
+<body class="selection:bg-black selection:text-white">
 
-      const totalTokens = project.circulatingSupply;
-      let allocatedPercentage = 0;
-      const allocations = [];
-
-      // Add fixed allocations
-      project.tokenAllocation.forEach(alloc => {
-          const amount = (alloc.percentage / 100) * totalTokens;
-          allocations.push({
-              name: alloc.name === "Project Team" ? `${project.name} Team` : alloc.name, // Dynamic project name for team
-              percentage: alloc.percentage,
-              amount: amount
-          });
-          allocatedPercentage += alloc.percentage;
-      });
-
-      // Distribute remaining to random wallets and 'Other Wallets'
-      const remainingPercentage = 100 - allocatedPercentage;
-      const remainingAmount = (remainingPercentage / 100) * totalTokens;
-
-      if (remainingPercentage > 0) {
-          const numRandomWallets = 5; // Fixed number of random wallets for display
-          let distributedRandomly = 0;
-
-          for (let i = 0; i < numRandomWallets; i++) {
-              // Distribute randomly, ensuring small amounts for each
-              const randomPercent = (Math.random() * (remainingPercentage / numRandomWallets * 1.5 - remainingPercentage / numRandomWallets * 0.5) + remainingPercentage / numRandomWallets * 0.5);
-              const actualPercent = Math.min(randomPercent, remainingPercentage - distributedRandomly); // Cap it
-              if (actualPercent > 0.1) { // Only add if it's a meaningful percentage
-                  const amount = (actualPercent / 100) * totalTokens;
-                  allocations.push({
-                      name: `Random Wallet ${String.fromCharCode(65 + i)}`, // A, B, C...
-                      percentage: actualPercent,
-                      amount: amount
-                  });
-                  distributedRandomly += actualPercent;
-              }
-          }
-
-          const otherWalletsPercentage = remainingPercentage - distributedRandomly;
-          if (otherWalletsPercentage > 0) {
-              allocations.push({
-                  name: "Other Wallets",
-                  percentage: otherWalletsPercentage,
-                  amount: (otherWalletsPercentage / 100) * totalTokens
-              });
-          }
-      }
-
-      // Sort by percentage held descending
-      return allocations.sort((a, b) => b.percentage - a.percentage);
-
-  }, [project]); // Dependency array: Recalculate if project data changes
-
-  // Only compute holderAllocations if the project is launched
-  // The useCallback is defined always, but its result is only used conditionally
-  const holderAllocations = project && project.status === "Launched" ? calculateHolderAllocations() : [];
-
-
-  useEffect(() => {
-    if (project) {
-      const currentUserId = 'simulatedUserId';
-      const contributed = project.userContributions[currentUserId] || 0;
-      setUserContributedAmount(contributed);
-      setShowHolders(false); // Reset holders view when project changes
-    } else {
-        setUserContributedAmount(0);
-    }
-  }, [project]);
-
-  if (!project) return null;
-
-  const handleContributionSubmit = (e) => {
-    e.preventDefault();
-    const amount = parseFloat(contributionAmountInput);
-
-    if (isNaN(amount) || amount <= 0) {
-      console.error("Please enter a valid positive contribution amount.");
-      return;
-    }
-    if (amount < project.minContribution) {
-      console.error(`Minimum contribution is $${project.minContribution} AVAX.`);
-      return;
-    }
-
-    const remainingUserCap = project.maxContributionPerUser - userContributedAmount;
-    if (amount > remainingUserCap) {
-        console.error(`You can only contribute up to $${remainingUserCap.toFixed(2)} AVAX more to this project.`);
-        return;
-    }
-
-    const remainingPresaleCap = project.presaleTarget - project.currentContributions;
-    if (amount > remainingPresaleCap) {
-        console.error(`The presale only needs $${remainingPresaleCap.toFixed(2)} AVAX more to reach its target.`);
-        return;
-    }
-
-    const currentUserId = 'simulatedUserId';
-    onContribute(project.name, amount, currentUserId);
-    setContributionAmountInput("");
-  };
-
-  const isPresaleComplete = project.currentContributions >= project.presaleTarget;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-purple-700 rounded-lg shadow-2xl max-w-2xl w-full p-6 space-y-6 animate-scale-in overflow-y-auto max-h-[90vh]">
-        <div className="flex justify-between items-center border-b border-gray-700 pb-4">
-          <h2 className="text-3xl font-bold text-purple-400">{project.name} Details</h2>
-          <Button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-lg" variant="ghost">
-            &times;
-          </Button>
+    <!-- Header and Navigation -->
+    <header class="fixed top-0 left-0 w-full bg-white border-b border-black z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <h1 class="text-xl font-bold tracking-widest uppercase">
+                ARENA.SOCIAL
+            </h1>
+            
+            <!-- Hamburger Menu Button -->
+            <button id="menu-button" class="p-2 border border-black rounded-lg transition-colors hover:bg-black hover:text-white focus:outline-none" aria-label="Toggle Menu">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
         </div>
+    </header>
 
-        <div className="space-y-4 text-gray-300">
-          <p className="text-lg leading-relaxed">{project.fullDescription}</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center">
-              <Lightbulb className="w-4 h-4 mr-2 text-yellow-400" />
-              <span>Status: <span className="font-semibold text-yellow-300">{project.status}</span></span>
+    <!-- Navigation Drawer (Overlay Menu) -->
+    <nav id="nav-menu" class="fixed top-0 right-0 h-full w-64 bg-white border-l border-black shadow-2xl z-40 transform translate-x-full transition-transform duration-300">
+        <div class="p-6">
+            <h2 class="text-2xl font-semibold mb-8 border-b pb-2 border-black">Menu</h2>
+            <ul id="nav-list" class="space-y-4 font-medium">
+                <li><button data-section="tasks-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-chart-line text-lg mr-3"></i>Tasks (Dashboard)</button></li>
+                <li><button data-section="approvals-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-checks text-lg mr-3"></i>Approvals (Creator)</button></li>
+                <li><button data-section="wallet-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-wallet text-lg mr-3"></i>Wallet & History</button></li>
+                <li><button data-section="profile-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-user-circle text-lg mr-3"></i>Profile</button></li>
+                <li><button data-section="create-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-plus-circle text-lg mr-3"></i>Create Task</button></li>
+                <li><button data-section="about-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-info text-lg mr-3"></i>About Arena</button></li>
+            </ul>
+            <div class="mt-8 pt-4 border-t border-black">
+                <p class="text-sm">User ID:</p>
+                <code id="user-id-display" class="block mt-1 p-2 text-xs bg-gray-100 border border-black rounded-lg break-all">...loading</code>
             </div>
-            <div className="flex items-center">
-              {project.moochBurned ? (
-                <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
-              ) : (
-                <XCircle className="w-4 h-4 mr-2 text-red-400" />
-              )}
-              <span>1M Mooch Burned: <span className="font-semibold">{project.moochBurned ? "Yes" : "No"}</span></span>
+        </div>
+    </nav>
+    <div id="overlay" class="fixed inset-0 bg-black opacity-0 z-30 transition-opacity duration-300 pointer-events-none"></div>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- 1. Tasks/Dashboard Section -->
+        <section id="tasks-section" class="page-section active">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Tasks Dashboard</h2>
+
+            <!-- Metrics Card Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div class="p-6 border border-black rounded-xl shadow-lg">
+                    <p class="text-sm uppercase font-semibold text-gray-700">Total Available Tasks</p>
+                    <p id="total-tasks-count" class="text-4xl font-bold mt-2">0</p>
+                </div>
+                <div class="p-6 border border-black rounded-xl shadow-lg">
+                    <p class="text-sm uppercase font-semibold text-gray-700">Your $eARENA Balance (Platform)</p>
+                    <p id="wallet-balance-display-dashboard" class="text-4xl font-bold mt-2">0.00</p>
+                </div>
+                <div class="p-6 border border-black rounded-xl shadow-lg">
+                    <p class="text-sm uppercase font-semibold text-gray-700">Total $eARENA Locked</p>
+                    <p id="total-tasks-arena-value" class="text-4xl font-bold mt-2">0.00</p>
+                </div>
+                <div class="p-6 border border-black rounded-xl shadow-lg">
+                    <p class="text-sm uppercase font-semibold text-gray-700">$ARENA Live Price (USD)</p>
+                    <p id="arena-price-display" class="text-4xl font-bold mt-2">
+                        <span id="price-value">$0.0000</span>
+                        <i id="price-loader" class="ph ph-circle-notch animate-spin text-xl text-gray-400 ml-2"></i>
+                    </p>
+                </div>
             </div>
 
-            {project.shillScore > 0 && (
-                <div className="flex items-center">
-                    <Scale className="w-4 h-4 mr-2 text-pink-400" />
-                    <span>Shill Score: <span className="font-semibold text-pink-300">{project.shillScore}</span></span>
-                </div>
-            )}
-             <div className="flex items-center">
-                <BarChart2 className="w-4 h-4 mr-2 text-blue-400" />
-                <span>Current Votes: <span className="font-semibold text-blue-300">{project.votes.toLocaleString()}</span></span>
+            <!-- Task List -->
+            <h3 class="text-2xl font-bold mb-4">Open Engagement Tasks</h3>
+            <div id="tasks-list" class="space-y-4">
+                <p id="no-tasks-message" class="text-gray-500 italic">No open tasks found. Be the first to <a href="#" data-section="create-section" class="nav-link underline text-black">create one!</a></p>
+            </div>
+        </section>
+
+        <!-- 2. Approvals Section -->
+        <section id="approvals-section" class="page-section">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Proof Approvals & Quality Control</h2>
+            <p class="mb-6 text-gray-700">Review submissions for the tasks you created. Approve submissions to pay the user, or reject low-quality engagement.</p>
+
+            <div id="approvals-list" class="space-y-6">
+                <!-- Proofs for approval will be injected here -->
+            </div>
+            <p id="no-pending-proofs" class="text-gray-500 italic hidden mt-4">No pending proofs requiring your review.</p>
+        </section>
+
+        <!-- 3. Wallet Section -->
+        <section id="wallet-section" class="page-section">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Your Wallet & Transaction History</h2>
+
+            <!-- Wallet Overview -->
+            <div class="p-8 border-4 border-black rounded-xl max-w-xl mx-auto text-center">
+                <p class="text-xl uppercase font-medium">Current $eARENA Balance (Platform Use)</p>
+                <p id="wallet-balance-display-wallet" class="text-6xl font-extrabold mt-4">0.00</p>
+                <p class="text-lg mt-2 font-mono text-gray-700">$eARENA</p>
             </div>
 
-            {(project.status === "Voting" || project.status === "Presale Active" || project.status === "Launched") && (
-              <>
-                <div className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2 text-green-400" />
-                  <span>Presale Target: <span className="font-semibold text-green-300">{project.presaleTarget ? `$${project.presaleTarget.toLocaleString()} AVAX` : 'N/A'}</span></span>
+            <!-- Deposit/Withdraw/Claim Actions -->
+            <div class="mt-10 max-w-xl mx-auto space-y-4">
+                <p class="text-lg font-semibold border-b pb-2 border-black">Platform Token Management</p>
+                <button onclick="openDepositModal()" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 flex items-center justify-center font-medium">
+                    <i class="ph ph-currency-btc text-xl mr-3"></i> Buy $eARENA (Initiate Deposit)
+                </button>
+                <button onclick="claimArena()" class="w-full text-black p-4 rounded-lg border border-black transition-colors hover:bg-gray-100 flex items-center justify-center font-medium">
+                    <i class="ph ph-arrows-clockwise text-xl mr-3"></i> Weekly Claim $eARENA to $ARENA
+                </button>
+            </div>
+            
+            <!-- History Tabs -->
+            <div class="mt-12">
+                <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Transaction History</h3>
+                <div id="history-list" class="space-y-3">
+                    <!-- Transaction history will be injected here -->
                 </div>
-                <div className="flex items-center">
-                  <Wallet className="w-4 h-4 mr-2 text-purple-400" />
-                  <span>Min Contribution: <span className="font-semibold text-purple-300">{project.minContribution ? `$${project.minContribution.toLocaleString()} AVAX` : 'N/A'}</span></span>
-                </div>
-                 <div className="flex items-center">
-                  <Wallet className="w-4 h-4 mr-2 text-orange-400" />
-                  <span>Max per person: <span className="font-semibold text-orange-300">{project.maxContributionPerUser ? `$${project.maxContributionPerUser.toLocaleString()} AVAX` : 'N/A'}</span></span>
-                </div>
-                <div className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2 text-cyan-400" />
-                  <span>Token Price: <span className="font-semibold text-cyan-300">{project.tokenPrice ? `${project.tokenPrice.toFixed(4)} AVAX` : 'N/A'}</span></span>
-                </div>
-                <div className="flex items-center">
-                  <Verified className="w-4 h-4 mr-2 text-indigo-400" />
-                  <span>Audit Status: <span className="font-semibold text-indigo-300">{project.auditStatus || 'Pending'}</span></span>
-                </div>
-                {project.status === "Launched" && (
-                    <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-2 text-blue-400" />
-                        <span>Circulating Supply: <span className="font-semibold text-blue-300">{project.circulatingSupply.toLocaleString()} {project.name}</span></span>
-                    </div>
-                )}
-              </>
-            )}
-            {project.status === "Presale Active" && (
-                <div className="flex items-center col-span-full bg-gray-800 p-2 rounded-md">
-                    <TrendingUp className="w-5 h-5 mr-2 text-lime-400 animate-bounce" />
-                    <span className="text-lg font-bold text-lime-300">
-                        Raised: ${project.currentContributions.toLocaleString()} / ${project.presaleTarget.toLocaleString()} AVAX
-                    </span>
-                </div>
-            )}
-             {project.status === "Launched" && (
-                <div className="flex items-center col-span-full bg-green-800 p-3 rounded-md justify-center">
-                    <CheckCircle className="w-6 h-6 mr-3 text-green-300 animate-pulse" />
-                    <span className="text-xl font-bold text-green-100">
-                        PROJECT LAUNCHED!
-                    </span>
-                </div>
-            )}
-          </div>
+                <p id="no-history-message" class="text-gray-500 italic mt-4">No recent transactions recorded.</p>
+            </div>
+        </section>
 
-          <div className="flex flex-wrap gap-4 mt-6">
-            {project.websiteUrl && (
-              <a href={project.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-400 hover:underline hover:text-blue-300 transition-colors">
-                <ExternalLink className="w-4 h-4 mr-1" /> Project Website
-              </a>
-            )}
-            {project.whitepaperUrl && (
-              <a href={project.whitepaperUrl} target="_blank" rel="noopener noreferrer" className="flex items-center text-blue-400 hover:underline hover:text-blue-300 transition-colors">
-                <ScrollText className="w-4 h-4 mr-1" /> Whitepaper
-              </a>
-            )}
-          </div>
-        </div>
+        <!-- 4. Profile Section -->
+        <section id="profile-section" class="page-section">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Your Profile & Connection</h2>
 
-        {/* Action Buttons */}
-        <div className="pt-4 border-t border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
-          {/* Burn Mooch Button */}
-          {!project.moochBurned && (project.status === "Pending Burn") && (
-            <Button
-              onClick={() => onBurnMooch(project.name)}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-            >
-              🔥 Burn 1M $Mooch
-            </Button>
-          )}
-
-          {/* Send for Review Button */}
-          {project.moochBurned && project.status === "Submitted" && (
-            <Button
-              onClick={() => onSendForReview(project.name)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-            >
-              <Clock className="mr-2 h-5 w-5" /> Send for Money Bears Review
-            </Button>
-          )}
-
-          {/* Money Bears Accept Button (Simulated Admin Action) */}
-          {project.status === "Under Review" && (
-            <Button
-              onClick={() => onAcceptReview(project.name)}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-            >
-              <CheckCircle className="mr-2 h-5 w-5" /> Money Bears Accept Project
-            </Button>
-          )}
-
-          {/* Simulate Presale Launch Button (Admin/Demo only) */}
-          {project.status === "Voting" && (
-            <Button
-              onClick={() => onSimulatePresale(project.name)}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-            >
-              🚀 Simulate Presale Launch
-            </Button>
-          )}
-
-          {/* Contribution Section */}
-          {project.status === "Presale Active" && (
-            userHasMoochNFT ? (
-              isPresaleComplete ? (
-                <p className="text-green-400 font-semibold text-lg text-center sm:text-right w-full">Presale Completed!</p>
-              ) : (
-                <form onSubmit={handleContributionSubmit} className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Input
-                    type="number"
-                    placeholder={`Contribute (max ${ (project.maxContributionPerUser - userContributedAmount).toFixed(2) }) AVAX`}
-                    value={contributionAmountInput}
-                    onChange={(e) => setContributionAmountInput(e.target.value)}
-                    min={project.minContribution}
-                    max={project.maxContributionPerUser - userContributedAmount}
-                    step="0.01"
-                    className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-green-500 focus:ring-green-500 focus:ring-1"
-                  />
-                  <Button
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-                    disabled={userContributedAmount >= project.maxContributionPerUser || isPresaleComplete}
-                  >
-                    Contribute
-                  </Button>
-                </form>
-              )
-            ) : (
-              <p className="text-red-400 font-semibold text-lg text-center sm:text-right w-full">
-                Mooch NFT required to contribute!
-              </p>
-            )
-          )}
-           {/* View Holders Button for Launched Projects */}
-          {project.status === "Launched" && (
-              <Button
-                  onClick={() => setShowHolders(!showHolders)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-              >
-                  <Users className="mr-2 h-5 w-5" /> {showHolders ? 'Hide Holders' : 'View Holders'}
-              </Button>
-          )}
-        </div>
-
-        {/* Holders Section - Conditionally rendered */}
-        {project.status === "Launched" && showHolders && (
-            <div className="mt-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h3 className="text-xl font-bold text-center text-blue-300 mb-4 flex items-center justify-center">
-                    <Users className="mr-2 h-5 w-5" /> Top Token Holders
+            <div class="max-w-xl mx-auto p-8 border border-black rounded-xl shadow-lg">
+                <h3 class="text-2xl font-semibold mb-4 flex items-center">
+                    <i class="ph ph-twitter-logo text-3xl mr-3"></i> Social Profile Connection
                 </h3>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-700">
-                        <thead className="bg-gray-700">
-                            <tr>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                    Holder
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                    % Held
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
-                                    Tokens Held
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800">
-                            {holderAllocations.map((holder, index) => (
-                                <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'} hover:bg-gray-600 transition-colors`}>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white">
-                                        {holder.name}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-purple-300">
-                                        {holder.percentage.toFixed(2)}%
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-cyan-300">
-                                        {holder.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                
+                <div id="twitter-connection-status" class="p-4 rounded-lg border-2 border-dashed border-gray-400">
+                    <p class="font-medium">Status: <span id="twitter-status-text" class="text-red-600 font-bold">Disconnected</span></p>
+                    <p class="text-sm mt-1 text-gray-600">Your social handle is used to verify task completion and process payouts securely.</p>
                 </div>
-                <p className="text-xs text-gray-500 mt-4 text-center">
-                    (Note: Token amounts are approximate for demonstration purposes.)
-                </p>
+
+                <div class="mt-6 space-y-4">
+                    <label for="twitter-handle" class="block font-medium">Your Twitter Handle (without @)</label>
+                    <input type="text" id="twitter-handle" placeholder="arena_user123" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                    <button onclick="connectTwitter()" class="w-full bg-black text-white p-3 rounded-lg border border-black transition-colors hover:bg-gray-800 font-medium">
+                        Connect/Update Social Handle
+                    </button>
+                </div>
             </div>
-        )}
-      </div>
+        </section>
+
+        <!-- 5. Create Task Section -->
+        <section id="create-section" class="page-section">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Create New Engagement Task</h2>
+            <p class="mb-4 text-gray-700">You will pay the total budget in **$eARENA** from your platform balance.</p>
+
+            <form id="create-task-form" class="max-w-xl mx-auto p-8 border border-black rounded-xl shadow-lg space-y-6">
+                
+                <div>
+                    <label for="post-url" class="block font-medium mb-2">Social Post URL (Twitter/X)</label>
+                    <input type="url" id="post-url" required placeholder="https://x.com/username/status/123456789" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                </div>
+
+                <div>
+                    <label for="task-type" class="block font-medium mb-2">Engagement Type</label>
+                    <select id="task-type" required class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black">
+                        <option value="">Select Engagement Type</option>
+                        <option value="retweet">Retweet</option>
+                        <option value="comment">Comment</option>
+                        <option value="like">Like</option>
+                        <option value="quote">Quote Tweet</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="task-budget" class="block font-medium mb-2">Total $eARENA Budget</label>
+                    <input type="number" id="task-budget" required min="1" step="0.01" placeholder="Minimum 1 $eARENA" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                </div>
+                
+                <div>
+                    <label for="target-count" class="block font-medium mb-2">Target Engagement Count</label>
+                    <input type="number" id="target-count" required min="1" placeholder="e.g., 50 engagements" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                </div>
+                
+                <p id="reward-preview" class="text-sm text-gray-700 italic text-center">Reward per engagement: 0.00 $eARENA</p>
+
+                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
+                    Fund & Create Task
+                </button>
+            </form>
+        </section>
+        
+        <!-- 6. About Arena Section -->
+        <section id="about-section" class="page-section">
+            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">About Arena.Social</h2>
+            
+            <div class="max-w-3xl mx-auto space-y-6 text-lg">
+                <p><strong>Arena.Social</strong> is a decentralized engagement marketplace built on the Avalanche ecosystem. We connect content creators who need genuine social interaction with active community members who are willing to perform high-quality engagement for rewards.</p>
+                
+                <h3 class="text-xl font-bold pt-4">Dual Token Economy: $ARENA and $eARENA</h3>
+                <ul class="list-disc list-inside space-y-2 pl-4">
+                    <li><strong>$ARENA (Real Token):</strong> This is the governance and primary utility token on the Avalanche chain. Its live price is fetched dynamically.</li>
+                    <li><strong>$eARENA (Ecosystem Token):</strong> This is the internal, secure token used for all transactions within the platform (funding tasks, rewarding users). Users **must first send $ARENA** to the official Treasury Wallet: <code class="text-sm bg-gray-100 p-1 rounded-md break-all">0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310</code>. We verify the transaction hash (TxID) to issue $eARENA, ensuring token safety. Users can claim their $eARENA back to $ARENA weekly.</li>
+                </ul>
+
+                <h3 class="text-xl font-bold pt-4">Quality Control & Verification</h3>
+                <p>To ensure creators receive the best results, every task requires **manual approval** by the creator. When a user submits a proof (like a comment link), the task creator must verify the quality and legitimacy of the action in the **Approvals** dashboard before the payout is triggered. This puts the creator in charge of ensuring high-quality engagement. If the creator does not approve within a set time period (2 days in our system), the proof is automatically approved, ensuring timely payment to the engager.</p>
+            </div>
+        </section>
+
+
+        <!-- Global Message Box (used instead of alert/confirm) -->
+        <div id="message-box" class="fixed bottom-4 right-4 z-50 p-4 bg-black text-white rounded-lg shadow-xl hidden transition-all duration-300"></div>
+
+    </main>
+
+    <!-- Proof Submission Modal -->
+    <div id="proof-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 invisible opacity-0">
+        <div class="bg-white p-8 border border-black rounded-xl max-w-lg w-full m-4 relative shadow-2xl">
+            <button id="close-proof-modal" class="absolute top-4 right-4 text-black hover:text-gray-700 p-2"><i class="ph ph-x-circle text-2xl"></i></button>
+            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Submit Engagement Proof</h3>
+            
+            <div class="text-sm space-y-1 mb-4">
+                <p class="font-semibold">Task:</p>
+                <p id="modal-task-details" class="truncate italic"></p>
+                <p class="font-semibold mt-2">Reward:</p>
+                <p id="modal-task-reward" class="text-xl font-bold text-black"></p>
+            </div>
+
+            <form id="proof-submission-form" class="space-y-4">
+                <input type="hidden" id="modal-task-id">
+                <label for="proof-url" class="block font-medium">Link to your post (Retweet/Comment URL)</label>
+                <input type="url" id="proof-url" required placeholder="https://x.com/yourhandle/status/..." class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                
+                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
+                    Submit Proof for Review
+                </button>
+            </form>
+        </div>
     </div>
-  );
-};
+    
+    <!-- Deposit Verification Modal (New) -->
+    <div id="deposit-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 invisible opacity-0">
+        <div class="bg-white p-8 border border-black rounded-xl max-w-lg w-full m-4 relative shadow-2xl">
+            <button id="close-deposit-modal" class="absolute top-4 right-4 text-black hover:text-gray-700 p-2"><i class="ph ph-x-circle text-2xl"></i></button>
+            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Buy $eARENA - Transaction Verification</h3>
+            
+            <div class="bg-yellow-50 border border-yellow-500 p-4 rounded-lg mb-4 text-sm">
+                <p class="font-bold text-yellow-800 flex items-center mb-2"><i class="ph ph-warning-circle text-lg mr-2"></i> ACTION REQUIRED: External Transfer</p>
+                <p class="text-yellow-800">Please send your $ARENA tokens (on Avalanche C-Chain) to the official treasury address below **before** submitting this form.</p>
+            </div>
+            
+            <p class="font-medium mb-1">Official Treasury Wallet:</p>
+            <code class="block bg-gray-100 p-3 rounded-lg text-sm break-all mb-4" id="treasury-wallet">0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310</code>
 
+            <form id="deposit-verification-form" class="space-y-4">
+                <div>
+                    <label for="deposit-amount" class="block font-medium mb-2">Amount of $ARENA Sent</label>
+                    <input type="number" id="deposit-amount" required min="1" step="0.01" placeholder="e.g., 500 ARENA" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                </div>
+                <div>
+                    <label for="deposit-txid" class="block font-medium mb-2">Transaction Hash (TxID)</label>
+                    <input type="text" id="deposit-txid" required placeholder="0x..." class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
+                </div>
+                
+                <p id="deposit-conversion-rate" class="text-sm text-gray-700 italic text-center">Conversion: 1 $ARENA = 1 $eARENA</p>
 
-// --- TradeLaunchedMemes Component ---
-const TradeLaunchedMemes = ({ launchedProjects, onBackToArena, userAvaxBalance, userTokenBalances, onPerformTrade, userConnectedXAccount, onShillProject }) => {
-    const SIMULATED_GAS_FEE_AVAX = 0.002;
+                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
+                    Submit TxID for Verification
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, addDoc, updateDoc, increment, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const [selectedProject, setSelectedProject] = useState(null);
-    const [tradeDirection, setTradeDirection] = useState('buy'); // 'buy' or 'sell'
-    const [inputAmount, setInputAmount] = useState("");
-    const [slippage, setSlippage] = useState(0.5); // Default slippage 0.5%
-    const [isTrading, setIsTrading] = useState(false);
-    const [transactionResult, setTransactionResult] = useState(null); // { status: 'success'|'fail', message: string, txLink: string }
-    const [chartDataType, setChartDataType] = useState('price'); // 'price' or 'mcap'
+        // Set Firebase logging level
+        setLogLevel('Debug');
 
-    // Set default selected project if available
-    useEffect(() => {
-        if (launchedProjects.length > 0 && !selectedProject) {
-            setSelectedProject(launchedProjects[0]);
+        // Global Variables and Constants
+        const EARENA_CONVERSION_RATE = 1.0; // 1 ARENA = 1 eARENA (Fixed for security)
+        const ARENA_TREASURY_WALLET = '0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310';
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
+        let db, auth, userId = 'guest_user';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        // Application State
+        let currentEarenaBalance = 0;
+        let twitterHandle = null;
+        let availableTasks = [];
+        let myCreatedTasks = [];
+        let proofsToReview = [];
+        let arenaPrice = 0.00;
+        let isAuthReady = false;
+
+        // --- Utility Functions ---
+        
+        /** Shows a custom message box instead of using alert() */
+        function showMessage(message, type = 'info') {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.className = `fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-xl transition-all duration-300 ${type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-black'} text-white`;
+            box.style.display = 'block';
+            setTimeout(() => {
+                box.style.display = 'none';
+            }, 4000);
         }
-    }, [launchedProjects, selectedProject]);
-
-    // Generate dummy price/mcap data for the chart
-    const generateChartData = useCallback((project) => {
-        if (!project) return [];
-
-        const data = [];
-        const initialPrice = project.tokenPrice; // Base for historical data
-        const currentPrice = project.currentPrice; // The current dynamic price from state
-        const circulatingSupply = project.circulatingSupply;
-
-        // Generate history for the last 24 periods (e.g., hours)
-        for (let i = 0; i < 23; i++) {
-            const historicalPrice = initialPrice * (1 + (Math.random() - 0.5) * 0.05); // Random fluctuation
-            const historicalMcap = historicalPrice * circulatingSupply * AVAX_USD_PRICE;
-            data.push({
-                time: `${i < 10 ? '0' : ''}${i}:00`,
-                price: parseFloat(historicalPrice.toFixed(6)),
-                mcap: parseFloat(historicalMcap.toFixed(2)),
-            });
+        
+        /** Converts number to 2 decimal string */
+        function formatArena(amount) {
+            return (amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
-        // Add the current real-time price as the last data point
-        data.push({
-            time: 'Now',
-            price: parseFloat(currentPrice.toFixed(6)),
-            mcap: parseFloat((currentPrice * circulatingSupply * AVAX_USD_PRICE).toFixed(2))
-        });
-        return data;
-    }, [AVAX_USD_PRICE]);
-
-    const projectChartData = selectedProject ? generateChartData(selectedProject) : [];
-
-    // Custom Tooltip for Recharts
-    const CustomTooltip = ({ active, payload, label }) => {
-      if (active && payload && payload.length) {
-        const dataPoint = payload[0].payload;
-        return (
-          <div className="bg-gray-800 border border-gray-700 p-3 rounded-lg shadow-lg text-white text-sm">
-            <p className="font-bold text-gray-300">{label}</p>
-            {chartDataType === 'price' ? (
-                <p>Price: <span className="font-semibold">{dataPoint.price.toFixed(6)} AVAX</span></p>
-            ) : (
-                <p>Market Cap: <span className="font-semibold">${dataPoint.mcap.toLocaleString()} USD</span></p>
-            )}
-            <p className="mt-1 text-xs text-gray-500">Click chart for more info (simulated)</p>
-          </div>
-        );
-      }
-      return null;
-    };
-
-
-    // Calculate amounts based on trade direction and inputs
-    const calculateTradeAmounts = useCallback(() => {
-        if (!selectedProject || !inputAmount || isNaN(parseFloat(inputAmount))) {
-            return { outputAmount: 0, rawOutput: 0, priceImpact: 0, gasFee: SIMULATED_GAS_FEE_AVAX };
-        }
-
-        const amount = parseFloat(inputAmount);
-        const currentPrice = selectedProject.currentPrice;
-        const effectiveSlippage = slippage / 100;
-
-        let outputAmount = 0;
-        let rawOutput = 0; // Amount before slippage
-        let simulatedPriceImpact = 0;
-
-        simulatedPriceImpact = Math.log10(Math.max(1, amount)) * PRICE_IMPACT_FACTOR_TRADE;
-        simulatedPriceImpact = Math.min(simulatedPriceImpact, 0.05);
-
-        if (tradeDirection === 'buy') {
-            rawOutput = (amount / currentPrice);
-            outputAmount = rawOutput * (1 - effectiveSlippage);
-        } else { // sell
-            rawOutput = (amount * currentPrice);
-            outputAmount = rawOutput * (1 - effectiveSlippage);
-        }
-
-        return {
-            outputAmount: Math.max(0, outputAmount),
-            rawOutput: rawOutput,
-            priceImpact: simulatedPriceImpact,
-            gasFee: SIMULATED_GAS_FEE_AVAX
-        };
-    }, [selectedProject, inputAmount, slippage, tradeDirection, SIMULATED_GAS_FEE_AVAX, PRICE_IMPACT_FACTOR_TRADE]);
-
-    const { outputAmount, rawOutput, priceImpact, gasFee } = calculateTradeAmounts();
-
-    const handleSwap = () => {
-        if (!selectedProject) {
-            setTransactionResult({ status: 'fail', message: 'Please select a token to trade.', txLink: '' });
-            return;
-        }
-        const amount = parseFloat(inputAmount);
-        if (isNaN(amount) || amount <= 0) {
-            setTransactionResult({ status: 'fail', message: 'Please enter a valid amount.', txLink: '' });
-            return;
-        }
-
-        setIsTrading(true);
-        setTransactionResult(null);
-
-        let success = true;
-        let message = "";
-        let priceChange = 0; // To simulate price increase/decrease
-
-        if (tradeDirection === 'buy') {
-            if (userAvaxBalance < amount + gasFee) {
-                success = false;
-                message = "Insufficient AVAX balance for this trade and gas fee.";
-            } else {
-                // Simulate price increase due to buying pressure
-                // Price increase is relative to the percentage of circulating supply bought
-                const tokensBeingBought = rawOutput; // Use rawOutput to represent tokens influencing price before slippage
-                const percentageOfSupply = tokensBeingBought / selectedProject.circulatingSupply;
-                priceChange = selectedProject.currentPrice * percentageOfSupply * 0.5; // Example factor 0.5 for impact
-                message = `Successfully bought ${outputAmount.toFixed(4)} ${selectedProject.name} tokens!`;
-            }
-        } else { // sell
-            const currentTokenBalance = userTokenBalances[selectedProject.name] || 0;
-            if (currentTokenBalance < amount) {
-                success = false;
-                message = `Insufficient ${selectedProject.name} tokens for this trade.`;
-            } else {
-                if (userAvaxBalance < gasFee) {
-                    success = false;
-                    message = "Insufficient AVAX balance for gas fee.";
-                } else {
-                    // Simulate price decrease due to selling pressure
-                    const tokensBeingSold = amount;
-                    const percentageOfSupply = tokensBeingSold / selectedProject.circulatingSupply;
-                    priceChange = -selectedProject.currentPrice * percentageOfSupply * 0.5; // Example factor 0.5 for impact
-                    message = `Successfully sold ${amount.toFixed(4)} ${selectedProject.name} tokens for ${outputAmount.toFixed(4)} AVAX!`;
+        
+        /** Handles exponential backoff for API calls */
+        async function fetchWithBackoff(url, options, maxRetries = 5) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        // Throw error to trigger retry for transient issues (like rate limiting)
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
+        
+        /** Fetches the real, live $ARENA price using the Gemini API and Google Search */
+        async function fetchArenaPrice() {
+            const priceValueElement = document.getElementById('price-value');
+            const priceLoaderElement = document.getElementById('price-loader');
+            priceValueElement.textContent = '$Loading...';
+            priceLoaderElement.classList.remove('hidden');
 
-        setTimeout(() => {
-            setIsTrading(false);
-            if (success) {
-                onPerformTrade(
-                    selectedProject.name,
-                    tradeDirection,
-                    amount, // Input amount (AVAX for buy, Token for sell)
-                    outputAmount, // Output amount (Token for buy, AVAX for sell)
-                    gasFee,
-                    priceChange // Pass price change to App component
-                );
-                setTransactionResult({ status: 'success', message: message, txLink: `https://snowtrace.io/tx/${generateTxHash()}` });
-                setInputAmount(""); // Clear input on success
-            } else {
-                setTransactionResult({ status: 'fail', message: message, txLink: '' });
-            }
-        }, 1500); // Simulate network delay
-    };
-
-    const handleShill = () => {
-        if (!selectedProject) {
-            console.error("No project selected to shill.");
-            return;
-        }
-        if (!userConnectedXAccount) {
-            console.error("Connect your X account to shill this meme!");
-            setTransactionResult({status: 'fail', message: 'Connect your X account to shill this meme!', txLink: ''});
-            return;
-        }
-        onShillProject(selectedProject.name);
-        setTransactionResult({status: 'success', message: `You shilled ${selectedProject.name}! Hype increased!`, txLink: `https://x.com/intent/tweet?text=Just shilled $${selectedProject.name} on Mooch Launch Arena! Check it out! #Mooch #MemeCoin`});
-    };
-
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-6 space-y-12 font-sans">
-            <div className="text-center space-y-4 pt-8">
-                <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-600 drop-shadow-lg animate-pulse">
-                    🚀 Trade Launched Memes
-                </h1>
-                <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
-                    Explore and trade tokens from successfully launched Mooch projects.
-                </p>
-            </div>
-
-            <div className="flex justify-center my-8">
-                <Button
-                    onClick={onBackToArena}
-                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-                >
-                    <ArrowLeft className="mr-2 h-5 w-5" /> Back to Launch Arena
-                </Button>
-            </div>
-
-            {launchedProjects.length === 0 ? (
-                <p className="col-span-full text-center text-gray-500 text-lg py-10">
-                    No projects have launched yet. Launch one in the arena to start trading!
-                </p>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-                    {/* Trading Interface Card */}
-                    <Card className="bg-gray-900 border border-yellow-700 p-6 rounded-xl shadow-2xl space-y-6">
-                        <CardContent className="p-0 space-y-6">
-                            <h2 className="text-2xl font-bold text-yellow-400 flex items-center">
-                                <HandCoins className="mr-2 w-6 h-6" /> Trade Token
-                            </h2>
-
-                            {/* Token Selection */}
-                            <div>
-                                <label className="block text-gray-300 text-sm font-medium mb-2">Select Token</label>
-                                <Select
-                                    value={selectedProject ? selectedProject.name : ''}
-                                    onValueChange={(value) => setSelectedProject(launchedProjects.find(p => p.name === value))}
-                                >
-                                    <SelectTrigger className="w-full bg-gray-800 border border-gray-700 text-white focus:ring-yellow-500 focus:border-yellow-500">
-                                        <SelectValue placeholder="Choose a launched token" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-gray-800 text-white border-gray-700">
-                                        {launchedProjects.map(proj => (
-                                            <SelectItem key={proj.name} value={proj.name}>
-                                                {proj.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {selectedProject && (
-                                <>
-                                    {/* Buy/Sell Tabs */}
-                                    <div className="flex bg-gray-800 rounded-lg p-1">
-                                        <Button
-                                            onClick={() => setTradeDirection('buy')}
-                                            className={`flex-1 ${tradeDirection === 'buy' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                        >
-                                            Buy
-                                        </Button>
-                                        <Button
-                                            onClick={() => setTradeDirection('sell')}
-                                            className={`flex-1 ${tradeDirection === 'sell' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                        >
-                                            Sell
-                                        </Button>
-                                    </div>
-
-                                    {/* Input Section */}
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-gray-300 text-sm font-medium mb-2">
-                                                You {tradeDirection === 'buy' ? 'pay (AVAX)' : 'pay (Token)'}
-                                            </label>
-                                            <Input
-                                                type="number"
-                                                value={inputAmount}
-                                                onChange={(e) => setInputAmount(e.target.value)}
-                                                placeholder={`Amount in ${tradeDirection === 'buy' ? 'AVAX' : selectedProject.name}`}
-                                                className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-500 focus:ring-yellow-500"
-                                                min="0"
-                                                step="0.01"
-                                            />
-                                        </div>
-
-                                        <div className="flex items-center justify-center text-gray-500">
-                                            <ChevronRight className="rotate-90 w-6 h-6" />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-gray-300 text-sm font-medium mb-2">
-                                                You {tradeDirection === 'buy' ? `receive (${selectedProject.name})` : 'receive (AVAX)'}
-                                            </label>
-                                            <Input
-                                                type="text"
-                                                value={outputAmount.toFixed(4)}
-                                                readOnly
-                                                className="bg-gray-800 border border-gray-700 text-gray-300 cursor-not-allowed"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Trade Details */}
-                                    <div className="space-y-2 text-sm text-gray-400">
-                                        <div className="flex justify-between items-center">
-                                            <span>Price:</span>
-                                            <span className="font-semibold text-white">
-                                                1 {tradeDirection === 'buy' ? selectedProject.name : 'AVAX'} = {selectedProject.currentPrice.toFixed(6)} {tradeDirection === 'buy' ? 'AVAX' : selectedProject.name}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span>Slippage Tolerance:</span>
-                                            <Input
-                                                type="number"
-                                                value={slippage}
-                                                onChange={(e) => setSlippage(Math.max(0, Math.min(5, parseFloat(e.target.value))))} // Clamp between 0 and 5% for realism
-                                                step="0.1"
-                                                min="0"
-                                                max="5"
-                                                className="w-20 bg-gray-800 border border-gray-700 text-white text-right px-2 py-1"
-                                            />
-                                            <span>%</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span>Gas Fee:</span>
-                                            <span className="font-semibold text-white">{gasFee.toFixed(6)} AVAX</span>
-                                        </div>
-                                        {priceImpact > 0.0001 && (
-                                            <div className="flex justify-between items-center text-red-400">
-                                                <span>Price Impact:</span>
-                                                <span className="font-semibold">~{(priceImpact * 100).toFixed(2)}%</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Balances */}
-                                    <div className="text-sm text-gray-400 mt-4 border-t border-gray-800 pt-4">
-                                        <div className="flex justify-between items-center">
-                                            <span>Your AVAX Balance:</span>
-                                            <span className="font-semibold text-white">{userAvaxBalance.toFixed(4)} AVAX</span>
-                                        </div>
-                                        {selectedProject && (
-                                            <div className="flex justify-between items-center">
-                                                <span>Your {selectedProject.name} Balance:</span>
-                                                <span className="font-semibold text-white">
-                                                    {(userTokenBalances[selectedProject.name] || 0).toFixed(4)} {selectedProject.name}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-
-
-                                    {/* Swap Button */}
-                                    <Button
-                                        onClick={handleSwap}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-                                        disabled={isTrading || !selectedProject || !inputAmount || isNaN(parseFloat(inputAmount)) || parseFloat(inputAmount) <= 0}
-                                    >
-                                        {isTrading ? (
-                                            <RefreshCw className="animate-spin mr-2" />
-                                        ) : (
-                                            tradeDirection === 'buy' ? 'Swap AVAX for Token' : 'Swap Token for AVAX'
-                                        )}
-                                    </Button>
-
-                                    {/* Shill Button */}
-                                    <Button
-                                        onClick={handleShill}
-                                        className={`w-full font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 mt-2 ${userConnectedXAccount ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-600 cursor-not-allowed'}`}
-                                        disabled={!userConnectedXAccount || !selectedProject}
-                                    >
-                                        <Twitter className="mr-2 h-5 w-5" /> Shill This Meme!
-                                    </Button>
-
-                                    {/* Transaction Result */}
-                                    {transactionResult && (
-                                        <div className={`p-3 rounded-md mt-4 ${transactionResult.status === 'success' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
-                                            <p className="font-medium">{transactionResult.message}</p>
-                                            {transactionResult.txLink && (
-                                                <a href={transactionResult.txLink} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm flex items-center mt-1">
-                                                    View Transaction <ExternalLink className="ml-1 w-3 h-3" />
-                                                </a>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Chart Card */}
-                    <Card className="bg-gray-900 border border-blue-700 p-6 rounded-xl shadow-2xl flex flex-col">
-                        <CardContent className="p-0 flex-grow">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-2xl font-bold text-blue-400 flex items-center">
-                                    <BarChart2 className="mr-2 w-6 h-6" /> {selectedProject ? `${selectedProject.name} Chart` : 'Token Chart'}
-                                </h2>
-                                {/* Price/MCap Toggle */}
-                                <div className="flex bg-gray-800 rounded-lg p-1">
-                                    <Button
-                                        onClick={() => setChartDataType('price')}
-                                        className={`px-3 py-1 text-sm ${chartDataType === 'price' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                    >
-                                        Price (AVAX)
-                                    </Button>
-                                    <Button
-                                        onClick={() => setChartDataType('mcap')}
-                                        className={`px-3 py-1 text-sm ${chartDataType === 'mcap' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                                    >
-                                        MCap (USD)
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {selectedProject ? (
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <AreaChart data={projectChartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                                        <XAxis dataKey="time" stroke="#999" />
-                                        <YAxis
-                                            stroke="#999"
-                                            domain={['auto', 'auto']}
-                                            tickFormatter={(value) => chartDataType === 'price' ? value.toFixed(4) : `$${(value / 1000).toFixed(0)}K`}
-                                        />
-                                        <Tooltip content={CustomTooltip} />
-                                        <defs>
-                                            {/* Green if price increased, Red if price decreased from previous point */}
-                                            <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <Area
-                                            type="monotone"
-                                            dataKey={chartDataType}
-                                            stroke={selectedProject.priceChange >= 0 ? "#82ca9d" : "#ff4d4f"} // Green if up, Red if down from last trade
-                                            fillOpacity={1}
-                                            fill="url(#colorArea)"
-                                            strokeWidth={2}
-                                            dot={false}
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <p className="text-gray-500 text-center py-20">Select a token to view its chart.</p>
-                            )}
-                            {selectedProject && (
-                                <div className="text-center mt-4 text-gray-300">
-                                    Current Price: <span className="font-bold text-white">
-                                        {selectedProject.currentPrice.toFixed(6)} AVAX
-                                        {selectedProject.priceChange > 0 && <TrendingUp className="inline-block ml-1 w-4 h-4 text-green-400" />}
-                                        {selectedProject.priceChange < 0 && <TrendingDown className="inline-block ml-1 w-4 h-4 text-red-400" />}
-                                        {selectedProject.priceChange === 0 && selectedProject.currentPrice === selectedProject.tokenPrice && <span className="ml-1 text-gray-500"> (Initial)</span>}
-                                    </span>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            <footer className="text-center text-sm text-gray-500 pt-16 border-t border-gray-800 mt-12">
-                <p>&copy; {new Date().getFullYear()} Mooch. All rights reserved.</p>
-                <p className="mt-1">Mooch retains 3% of each successfully launched project. All applications undergo thorough review.</p>
-            </footer>
-        </div>
-    );
-};
-
-
-// --- Main App Component ---
-export default function App() {
-  const [projects, setProjects] = useState([
-    {
-      name: "Project Orbit",
-      shortDesc: "A DeFi lending protocol on Avalanche, focused on decentralized stablecoin loans.",
-      fullDescription: "Project Orbit aims to revolutionize DeFi lending by providing a secure, transparent, and highly efficient platform for decentralized stablecoin loans on the Avalanche blockchain. It features dynamic interest rates, flash loans, and a robust risk management framework, governed by its community.",
-      moochBurned: true,
-      status: "Voting", // Starts ready for voting
-      votes: 1250,
-      presaleTarget: 250,
-      minContribution: 10,
-      maxContributionPerUser: 250,
-      tokenPrice: 0.005,
-      currentPrice: 0.005,
-      circulatingSupply: 100000000, // Adjusted supply for more realistic percentage changes
-      tokenAllocation: [ // NEW: Token allocation definition
-          { name: "INTEGRITY DAO", percentage: 5 },
-          { name: "MONEYBEARS DAO", percentage: 5 },
-          { name: "Project Team", percentage: 15 },
-          { name: "Liquidity Pool", percentage: 20 },
-      ],
-      auditStatus: "Audited by CertiK",
-      websiteUrl: "https://projectorbit.xyz",
-      whitepaperUrl: "https://projectorbit.xyz/whitepaper.pdf",
-      currentContributions: 0,
-      userContributions: {},
-      priceChange: 0, // Track last price change for UI indicator
-      shillCount: 15,
-      shillScore: 15 * SHILL_SCORE_INCREMENT,
-      totalMoochBurned: 1000000,
-    },
-    {
-      name: "MetaVerse Eats",
-      shortDesc: "Food delivery NFTs linked to real meals, enhancing virtual-to-real experiences.",
-      fullDescription: "MetaVerse Eats bridges the gap between virtual and real-world dining. Purchase an NFT that is redeemable for a gourmet meal delivered to your door. Each NFT includes unique digital art and exclusive access to virtual dining events within the metaverse, creating a truly immersive experience.",
-      moochBurned: false,
-      status: "Pending Burn", // Starts pending burn
-      votes: 0,
-      presaleTarget: 250,
-      minContribution: 10,
-      maxContributionPerUser: 250,
-      tokenPrice: 0.001,
-      currentPrice: 0.001,
-      circulatingSupply: 500000000,
-      tokenAllocation: [
-          { name: "INTEGRITY DAO", percentage: 5 },
-          { name: "MONEYBEARS DAO", percentage: 5 },
-          { name: "Project Team", percentage: 15 },
-          { name: "Liquidity Pool", percentage: 20 },
-      ],
-      auditStatus: "Not Applicable (NFT only)",
-      websiteUrl: "https://metaverse-eats.com",
-      whitepaperUrl: "https://metaverse-eats.com/concept.pdf",
-      currentContributions: 0,
-      userContributions: {},
-      priceChange: 0,
-      shillCount: 0,
-      shillScore: 0,
-      totalMoochBurned: 0,
-    },
-    {
-      name: "Quantum Ledger",
-      shortDesc: "A secure, quantum-resistant blockchain for supply chain management.",
-      fullDescription: "Quantum Ledger is developing the next generation of blockchain technology, designed to be resistant to quantum computing attacks. Its primary application is in supply chain management, offering unparalleled security and transparency for tracking goods from origin to consumer.",
-      moochBurned: true,
-      status: "Under Review",
-      votes: 0,
-      presaleTarget: 0,
-      minContribution: 0,
-      maxContributionPerUser: 0,
-      tokenPrice: 0.0001,
-      currentPrice: 0.0001,
-      circulatingSupply: 1000000000,
-      tokenAllocation: [
-          { name: "INTEGRITY DAO", percentage: 5 },
-          { name: "MONEYBEARS DAO", percentage: 5 },
-          { name: "Project Team", percentage: 15 },
-          { name: "Liquidity Pool", percentage: 20 },
-      ],
-      auditStatus: "In Progress",
-      websiteUrl: "https://quantumledger.io",
-      whitepaperUrl: "https://quantumledger.io/overview.pdf",
-      currentContributions: 0,
-      userContributions: {},
-      priceChange: 0,
-      shillCount: 5,
-      shillScore: 5 * SHILL_SCORE_INCREMENT,
-      totalMoochBurned: 1000000,
-    },
-    {
-      name: "AI Art Forge",
-      shortDesc: "Platform for creating and trading AI-generated art as NFTs with creator royalties.",
-      fullDescription: "AI Art Forge empowers artists and collectors alike by providing a seamless platform for generating unique AI-driven digital art and minting it as NFTs. It features built-in smart contracts to ensure perpetual royalties for creators on secondary sales.",
-      moochBurned: true,
-      status: "Voting",
-      votes: 890,
-      presaleTarget: 250,
-      minContribution: 10,
-      maxContributionPerUser: 250,
-      tokenPrice: 0.008,
-      currentPrice: 0.008,
-      circulatingSupply: 200000000,
-      tokenAllocation: [
-          { name: "INTEGRITY DAO", percentage: 5 },
-          { name: "MONEYBEARS DAO", percentage: 5 },
-          { name: "Project Team", percentage: 15 },
-          { name: "Liquidity Pool", percentage: 20 },
-      ],
-      auditStatus: "Audited by PeckShield",
-      websiteUrl: "https://aiartforge.art",
-      whitepaperUrl: "https://aiartforge.art/vision.pdf",
-      currentContributions: 0,
-      userContributions: {},
-      priceChange: 0,
-      shillCount: 10,
-      shillScore: 10 * SHILL_SCORE_INCREMENT,
-      totalMoochBurned: 1000000,
-    },
-  ]);
-
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [newProjectDesc, setNewProjectDesc] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [userHasMoochNFT, setUserHasMoochNFT] = useState(false);
-  const [userConnectedXAccount, setUserConnectedXAccount] = useState(false);
-  const [viewMode, setViewMode] = useState("arena");
-
-  const [userAvaxBalance, setUserAvaxBalance] = useState(1000);
-  const [userTokenBalances, setUserTokenBalances] = useState({});
-
-  // --- Project Management Handlers ---
-  const handleProjectSubmit = (e) => {
-    e.preventDefault();
-    if (newProjectName && newProjectDesc) {
-      const newProject = {
-        name: newProjectName,
-        shortDesc: newProjectDesc,
-        fullDescription: "Awaiting full description and detailed presale information. Please check back after Mooch has been burned and the project has been reviewed.",
-        moochBurned: false,
-        status: "Pending Burn",
-        votes: 0,
-        presaleTarget: 250,
-        minContribution: 10,
-        maxContributionPerUser: 250,
-        tokenPrice: 0.01,
-        currentPrice: 0.01,
-        circulatingSupply: 100000000, // Default circulating supply for new projects
-        tokenAllocation: [ // Default allocation for new projects
-            { name: "INTEGRITY DAO", percentage: 5 },
-            { name: "MONEYBEARS DAO", percentage: 5 },
-            { name: "Project Team", percentage: 15 },
-            { name: "Liquidity Pool", percentage: 20 },
-        ],
-        auditStatus: "Pending Review",
-        websiteUrl: "",
-        whitepaperUrl: "",
-        currentContributions: 0,
-        userContributions: {},
-        priceChange: 0,
-        shillCount: 0,
-        shillScore: 0,
-        totalMoochBurned: 0,
-      };
-      setProjects([...projects, newProject]);
-      setNewProjectName("");
-      setNewProjectDesc("");
-      setShowSubmissionForm(false);
-      console.log(`Project "${newProject.name}" submitted! Please burn 1M $Mooch to proceed.`);
-    } else {
-      console.error("Please fill in both project name and description.");
-    }
-  };
-
-  const handleBurnMooch = (projectName) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project =>
-        project.name === projectName
-          ? { ...project, moochBurned: true, status: "Submitted", totalMoochBurned: (project.totalMoochBurned || 0) + 1000000 }
-          : project
-      )
-    );
-    setSelectedProject(prevProject =>
-      prevProject && prevProject.name === projectName
-        ? { ...prevProject, moochBurned: true, status: "Submitted", totalMoochBurned: (prevProject.totalMoochBurned || 0) + 1000000 }
-        : prevProject
-    );
-    console.log(`1M $Mooch burned for "${projectName}"! Project is now submitted.`);
-  };
-
-  const handleSendForReview = (projectName) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project =>
-        project.name === projectName
-          ? { ...project, status: "Under Review" }
-          : project
-      )
-    );
-    setSelectedProject(prevProject =>
-      prevProject && prevProject.name === projectName
-        ? { ...prevProject, status: "Under Review" }
-        : prevProject
-    );
-    console.log(`Project "${projectName}" sent for Money Bears review.`);
-  };
-
-  const handleAcceptReview = (projectName) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project =>
-        project.name === projectName
-          ? { ...project, status: "Voting", shillScore: Math.floor(Math.random() * 50) + 50 }
-          : project
-      )
-    );
-    setSelectedProject(prevProject =>
-      prevProject && prevProject.name === projectName
-        ? { ...prevProject, status: "Voting", shillScore: Math.floor(Math.random() * 50) + 50 }
-        : prevProject
-    );
-    console.log(`Money Bears accepted "${projectName}"! It's now in Voting.`);
-  };
-
-
-  const handleSimulatePresale = (projectName) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project =>
-        project.name === projectName
-          ? { ...project, status: "Presale Active" }
-          : project
-      )
-    );
-    setSelectedProject(prevProject =>
-      prevProject && prevProject.name === projectName
-        ? { ...prevProject, status: "Presale Active" }
-        : prevProject
-    );
-    console.log(`Presale launched for "${projectName}"!`);
-  };
-
-  const handleContribute = (projectName, amount, userId) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project => {
-        if (project.name === projectName) {
-          const newCurrentContributions = project.currentContributions + amount;
-          const newUserContributions = {
-              ...project.userContributions,
-              [userId]: (project.userContributions[userId] || 0) + amount
-          };
-          let newStatus = project.status;
-          if (newCurrentContributions >= project.presaleTarget && project.status !== "Launched") {
-            newStatus = "Launched";
-            console.log(`Congratulations! "${projectName}" has been officially Launched!`);
-          }
-          const tokensReceived = (amount / project.tokenPrice);
-          setUserTokenBalances(prevBalances => ({
-              ...prevBalances,
-              [projectName]: (prevBalances[projectName] || 0) + tokensReceived
-          }));
-          setUserAvaxBalance(prevAvax => prevAvax - amount);
-
-          return {
-            ...project,
-            currentContributions: newCurrentContributions,
-            userContributions: newUserContributions,
-            status: newStatus,
-          };
-        }
-        return project;
-      })
-    );
-    setSelectedProject(prevProject => {
-        if (prevProject && prevProject.name === projectName) {
-            const newCurrentContributions = prevProject.currentContributions + amount;
-            const newUserContributions = {
-                ...prevProject.userContributions,
-                [userId]: (prevProject.userContributions[userId] || 0) + amount
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+            const userQuery = "What is the current live price of $ARENA token (Avalanche C-Chain 0x3c5f68d2f72debba4900c60f32eb8629876401f2) in USD?";
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: "You are a specialized financial data parser. Extract the current price of the requested cryptocurrency in USD as a plain number rounded to 4 decimal places. If you cannot find the price, return 0.0000." }] }
             };
-            let newStatus = prevProject.status;
-            if (newCurrentContributions >= prevProject.presaleTarget && prevProject.status !== "Launched") {
-                newStatus = "Launched";
-            }
-            return {
-                ...prevProject,
-                currentContributions: newCurrentContributions,
-                userContributions: newUserContributions,
-                status: newStatus,
-            };
-        }
-        return prevProject;
-    });
-  };
 
-  const handleShillProject = useCallback((projectName) => {
-      setProjects(prevProjects =>
-          prevProjects.map(project =>
-              project.name === projectName
-                  ? {
-                      ...project,
-                      shillCount: (project.shillCount || 0) + 1,
-                      shillScore: ((project.shillCount || 0) + 1) * SHILL_SCORE_INCREMENT
+            try {
+                const response = await fetchWithBackoff(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '0.0000';
+                
+                // Attempt to parse the number
+                let parsedPrice = parseFloat(text.replace(/[^0-9.]/g, ''));
+                if (isNaN(parsedPrice) || parsedPrice <= 0) {
+                     // Fallback to a default/last known price if the parser fails
+                     parsedPrice = 0.006603; 
+                }
+                arenaPrice = parsedPrice;
+                priceValueElement.textContent = `$${arenaPrice.toFixed(4)}`;
+                
+            } catch (error) {
+                console.error("Failed to fetch live price:", error);
+                // Display last known value on error
+                arenaPrice = 0.006603; 
+                priceValueElement.textContent = `$${arenaPrice.toFixed(4)} (Stale)`;
+            } finally {
+                priceLoaderElement.classList.add('hidden');
+            }
+        }
+
+
+        // --- Firestore Paths ---
+
+        /** Gets the document reference for the user's private wallet/profile data. */
+        const getUserProfileRef = (uid) => {
+            return doc(db, `artifacts/${appId}/users/${uid}/profile`, 'wallet_data');
+        };
+
+        /** Gets the document reference for a public task. */
+        const getTaskDocRef = (taskId) => {
+            return doc(db, `artifacts/${appId}/public/data/tasks`, taskId);
+        };
+
+        /** Gets the collection reference for public tasks. */
+        const getTasksCollectionRef = () => {
+            return collection(db, `artifacts/${appId}/public/data/tasks`);
+        };
+
+        /** Gets the document reference for a specific user's proof on a task. */
+        const getUserProofDocRef = (taskId, uid) => {
+            return doc(db, `artifacts/${appId}/public/data/tasks/${taskId}/proofs`, uid);
+        };
+        
+        /** Gets the collection reference for a specific user's transaction history. */
+        const getHistoryCollectionRef = (uid) => {
+            return collection(db, `artifacts/${appId}/users/${uid}/history`);
+        };
+
+
+        // --- Authentication and Initialization ---
+        
+        async function initializeAppAndAuth() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase configuration is missing.");
+                }
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Fetch price immediately and set up an interval
+                fetchArenaPrice();
+                setInterval(fetchArenaPrice, 60000); // Update price every minute
+
+                // Set up Auth State Listener
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
+                        try {
+                            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            userId = auth.currentUser.uid;
+                        } catch (error) {
+                            console.error("Anonymous sign-in failed:", error);
+                            userId = 'anonymous-error';
+                        }
                     }
-                  : project
-          )
-      );
-      console.log(`Shilled "${projectName}"! Shill Score increased.`);
-  }, []);
 
-  const handlePerformTrade = useCallback((
-    projectName,
-    tradeDirection,
-    inputAmount,
-    outputAmount,
-    gasFee,
-    priceChange
-  ) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project => {
-        if (project.name === projectName) {
-          const newCurrentPrice = Math.max(0.000001, project.currentPrice + priceChange);
-          return {
-            ...project,
-            currentPrice: newCurrentPrice,
-            priceChange: priceChange
-          };
+                    document.getElementById('user-id-display').textContent = userId;
+                    isAuthReady = true;
+                    setupRealtimeListeners();
+                });
+
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                showMessage(`Initialization error: ${error.message}`, 'error');
+            }
         }
-        return project;
-      })
-    );
 
-    setUserAvaxBalance(prevAvax => {
-      if (tradeDirection === 'buy') {
-        return prevAvax - inputAmount - gasFee;
-      } else { // sell
-        return prevAvax + outputAmount - gasFee;
-      }
-    });
+        // --- Realtime Data Listeners ---
 
-    setUserTokenBalances(prevTokens => {
-      const newTokens = { ...prevTokens };
-      if (tradeDirection === 'buy') {
-        newTokens[projectName] = (newTokens[projectName] || 0) + outputAmount;
-      } else { // sell
-        newTokens[projectName] = (newTokens[projectName] || 0) - inputAmount;
-      }
-      return newTokens;
-    });
-  }, []);
+        function setupRealtimeListeners() {
+            if (!isAuthReady || !db) return;
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.shortDesc.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const launchedProjects = projects.filter(project => project.status === "Launched");
-
-  const burnLeaderboard = [...projects].sort((a, b) => b.totalMoochBurned - a.totalMoochBurned);
-
-  const shillLeaderboard = [...projects]
-    .filter(p => p.shillScore > 0)
-    .sort((a, b) => b.shillScore - a.shillScore)
-    .slice(0, 10);
-
-  if (viewMode === "trade") {
-    return (
-        <TradeLaunchedMemes
-            launchedProjects={launchedProjects}
-            onBackToArena={() => setViewMode("arena")}
-            userAvaxBalance={userAvaxBalance}
-            userTokenBalances={userTokenBalances}
-            onPerformTrade={handlePerformTrade}
-            userConnectedXAccount={userConnectedXAccount}
-            onShillProject={handleShillProject}
-        />
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-6 space-y-12 font-sans">
-      <div className="text-center space-y-4 pt-8">
-        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 drop-shadow-lg animate-pulse">
-          🔥 Mooch Launch Arena
-        </h1>
-        <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
-          Submit your innovative project and burn 1M $Mooch to enter the arena. Community votes the best for presale.
-        </p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row justify-center gap-4 my-8">
-        <Button
-          onClick={() => setShowSubmissionForm(!showSubmissionForm)}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-        >
-          <Lightbulb className="mr-2 h-5 w-5" />
-          {showSubmissionForm ? "Close Submission" : "Submit New Project"}
-        </Button>
-        <Button
-          variant="outline"
-          className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:border-gray-500 py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-        >
-          <BarChart2 className="mr-2 h-5 w-5" />
-          View Current Voting
-        </Button>
-        <Button
-            variant="secondary"
-            className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
-            onClick={() => setViewMode("trade")}
-        >
-            🚀 Trade Launched Memes
-        </Button>
-      </div>
-
-      <div className="text-center my-6 space-y-2">
-          <p className="text-gray-300 text-sm">
-            1 $Mooch = <span className="font-bold text-green-400">${MOOCH_USD_PRICE.toFixed(8)}</span>
-          </p>
-          {/* NFT and X Account Status */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4 items-center mt-4">
-            <Button
-                onClick={() => setUserHasMoochNFT(!userHasMoochNFT)}
-                className={`font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ${userHasMoochNFT ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
-            >
-                {userHasMoochNFT ? '✅ Mooch NFT in Wallet' : '❌ Mooch NFT Not Found'}
-            </Button>
-            <Button
-                onClick={() => setUserConnectedXAccount(!userConnectedXAccount)}
-                className={`font-semibold py-2 px-4 rounded-lg shadow-md transition-all duration-300 ${userConnectedXAccount ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-500 hover:bg-gray-600'}`}
-            >
-                <Twitter className="mr-2 h-5 w-5" /> {userConnectedXAccount ? 'X Account Connected' : 'Connect X Account'}
-            </Button>
-          </div>
-          <p className="text-gray-400 text-sm mt-2">Toggle states to simulate wallet connections.</p>
-          <p className="text-gray-400 text-sm mt-1">Your AVAX Balance: <span className="font-semibold text-white">{userAvaxBalance.toFixed(4)} AVAX</span></p>
-          {Object.keys(userTokenBalances).length > 0 && (
-              <p className="text-gray-400 text-sm mt-1">Your Tokens:
-                  {Object.entries(userTokenBalances).map(([tokenName, balance]) => (
-                      <span key={tokenName} className="font-semibold text-white ml-2">
-                          {balance.toFixed(4)} {tokenName}
-                      </span>
-                  ))}
-              </p>
-          )}
-      </div>
+            // 1. Listen to User Profile/Wallet Data (Private)
+            const userDocRef = getUserProfileRef(userId);
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    currentEarenaBalance = data.balance || 0;
+                    twitterHandle = data.twitterHandle || null;
+                    
+                    updateWalletUI();
+                    updateProfileUI();
+                } else {
+                    // Initialize profile if it doesn't exist 
+                    setDoc(userDocRef, { balance: 0.00, twitterHandle: null, userId: userId }); 
+                    currentEarenaBalance = 0.00;
+                    updateWalletUI();
+                }
+            }, (error) => {
+                console.error("Error listening to user profile:", error);
+                showMessage("Could not sync wallet data.", 'error');
+            });
 
 
-      {showSubmissionForm && (
-        <Card className="bg-gray-900 border border-purple-700 p-6 max-w-xl mx-auto shadow-2xl rounded-xl animate-fade-in">
-          <CardContent>
-            <h2 className="text-2xl font-bold text-center mb-6 text-purple-400">Submit Your Project</h2>
-            <form onSubmit={handleProjectSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="projectName" className="block text-gray-300 text-sm font-medium mb-2">Project Name</label>
-                <Input
-                  id="projectName"
-                  type="text"
-                  placeholder="e.g., Decentralized AI Hub"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500 focus:ring-1"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="projectDesc" className="block text-gray-300 text-sm font-medium mb-2">Short Description</label>
-                <Textarea
-                  id="projectDesc"
-                  placeholder="Briefly describe your project's innovation and purpose."
-                  value={newProjectDesc}
-                  onChange={(e) => setNewProjectDesc(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-white placeholder-gray-500 min-h-[80px] focus:border-purple-500 focus:ring-purple-500 focus:ring-1"
-                  required
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
-              >
-                Submit Project
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            // 2. Listen to User's Transaction History (Private)
+             const historyRef = getHistoryCollectionRef(userId);
+             onSnapshot(query(historyRef), (snapshot) => {
+                 const history = [];
+                 snapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
+                 renderHistory(history);
+             }, (error) => {
+                 console.error("Error listening to history:", error);
+             });
+            
+            // 3. Listen to Public Tasks Data
+            const tasksRef = getTasksCollectionRef();
+            const allTasksQuery = query(tasksRef);
+            onSnapshot(allTasksQuery, async (snapshot) => {
+                availableTasks = [];
+                myCreatedTasks = [];
+                let totalLockedEarena = 0;
+                
+                snapshot.forEach((doc) => {
+                    const task = { id: doc.id, ...doc.data() };
+                    availableTasks.push(task);
+                    totalLockedEarena += task.totalBudget || 0;
+                    if (task.creatorId === userId) {
+                         myCreatedTasks.push(task);
+                    }
+                });
+                
+                updateTasksUI(totalLockedEarena);
+                await fetchProofsForReview(); // Now fetch proofs for *my* created tasks
+            }, (error) => {
+                console.error("Error listening to tasks:", error);
+                showMessage("Could not sync public tasks.", 'error');
+            });
+        }
+        
+        /** Fetches all proofs submitted against the current user's created tasks */
+        async function fetchProofsForReview() {
+            if (!myCreatedTasks.length) {
+                proofsToReview = [];
+                renderApprovalSection();
+                return;
+            }
+            
+            proofsToReview = [];
+            
+            // Iterate over all tasks the user created
+            for (const task of myCreatedTasks) {
+                const proofsRef = collection(db, `artifacts/${appId}/public/data/tasks/${task.id}/proofs`);
+                // Query for proofs that are 'pending'
+                const q = query(proofsRef, where("status", "==", "pending"));
+                
+                const querySnapshot = await getDocs(q);
+                
+                querySnapshot.forEach(doc => {
+                    const proof = doc.data();
+                    proofsToReview.push({
+                        proofId: doc.id, // This is the userId of the engager
+                        taskId: task.id,
+                        taskType: task.type,
+                        reward: task.rewardPerEngagement,
+                        ...proof,
+                        taskPostUrl: task.postUrl,
+                    });
+                });
+            }
+            // Check for auto-approvals
+            processAutoApprovals();
+            renderApprovalSection();
+        }
+        
+        /** Checks for proofs overdue for manual approval and auto-approves them. */
+        async function processAutoApprovals() {
+            const TWO_DAYS_MS = 172800000;
+            const now = Date.now();
+            
+            const autoApprovedIds = [];
 
-      {/* Mooch Burn Leaderboard */}
-      <div className="max-w-3xl mx-auto bg-gray-900 border border-yellow-700 p-6 rounded-xl shadow-2xl space-y-4">
-        <h2 className="text-2xl font-bold text-center text-yellow-400 flex items-center justify-center">
-            🔥 Mooch Burn Leaderboard
-        </h2>
-        {burnLeaderboard.length > 0 ? (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800">
-                        <tr>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tl-lg">
-                                Project
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                $Mooch Burned
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tr-lg">
-                                Value (USD)
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                        {burnLeaderboard.map((project, index) => (
-                            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'} hover:bg-gray-700 transition-colors`}>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
-                                    {project.name}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-400">
-                                    {project.totalMoochBurned.toLocaleString()}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-green-400">
-                                    ${(project.totalMoochBurned * MOOCH_USD_PRICE).toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        ) : (
-            <p className="text-center text-gray-500">No projects have burned Mooch yet. Be the first!</p>
-        )}
-      </div>
+            for (const proof of proofsToReview) {
+                if (now > (proof.submittedAt + TWO_DAYS_MS)) {
+                    // Proof is overdue, auto-approve it
+                    await autoApproveProof(proof);
+                    autoApprovedIds.push(proof.proofId);
+                }
+            }
+            
+            // Filter out any proofs that were just auto-approved
+            proofsToReview = proofsToReview.filter(proof => !autoApprovedIds.includes(proof.proofId));
+        }
+        
+        /** Helper function to execute auto-approval logic (similar to manual approve) */
+        async function autoApproveProof(proof) {
+            const proofDocRef = getUserProofDocRef(proof.taskId, proof.proofId);
+            const taskDocRef = getTaskDocRef(proof.taskId);
+            const userWalletRef = getUserProfileRef(proof.proofId);
+            
+            try {
+                // Fetch task data to get reward amount (needed since the main array might not have it)
+                const taskSnap = await getDoc(taskDocRef);
+                const task = taskSnap.data();
+                const rewardAmount = task.rewardPerEngagement;
 
-      {/* Shill Score Leaderboard */}
-      <div className="max-w-3xl mx-auto bg-gray-900 border border-pink-700 p-6 rounded-xl shadow-2xl space-y-4">
-        <h2 className="text-2xl font-bold text-center text-pink-400 flex items-center justify-center">
-            📈 Shill Score Leaderboard (Top 10)
-        </h2>
-        {shillLeaderboard.length > 0 ? (
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800">
-                        <tr>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tl-lg">
-                                Rank
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                Project
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider rounded-tr-lg">
-                                Shill Score
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                        {shillLeaderboard.map((project, index) => (
-                            <tr key={index} className={`${index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-850'} hover:bg-gray-700 transition-colors`}>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    #{index + 1}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">
-                                    {project.name}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-pink-400">
-                                    {project.shillScore}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        ) : (
-            <p className="text-center text-gray-500">No projects have a shill score yet. Shill a meme to get started!</p>
-        )}
-      </div>
+                // 1. Mark Proof as Auto-Approved
+                await updateDoc(proofDocRef, {
+                    status: 'auto_approved',
+                    approvedBy: 'SYSTEM (Auto-Approval)',
+                    approvedAt: Date.now()
+                });
 
-      <div className="relative max-w-lg mx-auto mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <Input
-          type="text"
-          placeholder="Search projects..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-lg focus:border-purple-500 focus:ring-purple-500 focus:ring-1 shadow-inner transition-all duration-200"
-        />
-      </div>
+                // 2. Update Task Progress
+                await updateDoc(taskDocRef, {
+                    completedCount: increment(1),
+                    totalBudget: increment(-rewardAmount)
+                });
+                
+                // 3. Pay the User
+                await updateDoc(userWalletRef, {
+                    balance: increment(rewardAmount)
+                });
+                
+                // 4. Update engaging user's history
+                await addDoc(getHistoryCollectionRef(proof.proofId), {
+                    type: 'Task Payout (Auto-Approved)',
+                    amount: rewardAmount,
+                    status: 'approved',
+                    timestamp: Date.now()
+                });
+                
+                showMessage(`Auto-Approved proof for @${proof.twitterHandle}. Payout processed.`, 'success');
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredProjects.length > 0 ? (
-          filteredProjects.map((project, idx) => (
-            <Card
-              key={idx}
-              className="bg-gray-900 border border-gray-700 hover:border-purple-500 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg group"
-            >
-              <CardContent className="p-6 space-y-3">
-                <h2 className="text-2xl font-bold text-purple-300 group-hover:text-purple-400 transition-colors duration-300 flex items-center">
-                  {project.name}
-                </h2>
-                <p className="text-gray-400 text-base leading-relaxed line-clamp-3">{project.shortDesc}</p>
-                <div className="flex items-center gap-2 text-sm mt-3">
-                  <span className="text-yellow-400 font-medium flex items-center">
-                    <Lightbulb className="w-4 h-4 mr-1" />
-                    Status: <span className="ml-1 font-semibold">{project.status}</span>
-                  </span>
-                </div>
-                {project.moochBurned ? (
-                  <p className="text-sm text-green-400 flex items-center mt-1">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    1M Mooch Burned
-                  </p>
-                ) : (
-                  <p className="text-sm text-red-400 flex items-center mt-1">
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Mooch Burn Pending
-                  </p>
-                )}
-                 {/* Display Shill Score on cards */}
-                {project.shillScore > 0 && (
-                    <p className="text-sm text-pink-400 flex items-center mt-1">
-                        <Scale className="w-4 h-4 mr-1" />
-                        Shill Score: {project.shillScore}
-                    </p>
-                )}
-                {(project.status === "Voting" || project.status === "Presale Active") && (
-                  <p className="text-sm text-blue-400 flex items-center mt-1">
-                    <BarChart2 className="w-4 h-4 mr-1" />
-                    Votes: {project.votes.toLocaleString()}
-                  </p>
-                )}
-                {project.status === "Presale Active" && (
-                    <p className="text-sm text-lime-400 flex items-center mt-1">
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        Raised: ${project.currentContributions.toLocaleString()} / ${project.presaleTarget.toLocaleString()} AVAX
-                    </p>
-                )}
-                {project.status === "Launched" && (
-                    <p className="text-sm text-green-400 flex items-center mt-1 font-semibold">
-                        <TrendingUp className="w-4 h-4 mr-1" /> Launched!
-                    </p>
-                )}
-                <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-center">
-                    <Button
-                        variant="ghost"
-                        className="text-purple-400 hover:bg-purple-900 hover:text-white transition-colors duration-200"
-                        onClick={() => setSelectedProject(project)}
-                    >
-                        View Details
-                    </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <p className="col-span-full text-center text-gray-500 text-lg py-10">
-            No projects found matching your search.
-          </p>
-        )}
-      </div>
+            } catch (error) {
+                console.error("Auto-Approval failed for proof:", proof.proofId, error);
+            }
+        }
 
-      <ProjectDetailsModal
-        project={selectedProject}
-        onClose={() => setSelectedProject(null)}
-        onBurnMooch={handleBurnMooch}
-        onSimulatePresale={handleSimulatePresale}
-        onContribute={handleContribute}
-        userHasMoochNFT={userHasMoochNFT}
-        onSendForReview={handleSendForReview}
-        onAcceptReview={handleAcceptReview}
-      />
 
-      <footer className="text-center text-sm text-gray-500 pt-16 border-t border-gray-800 mt-12">
-        <p>&copy; {new Date().getFullYear()} Mooch. All rights reserved.</p>
-        <p className="mt-1">Mooch retains 3% of each successfully launched project. All applications undergo thorough review.</p>
-      </footer>
-    </div>
-  );
-}
+        // --- UI Update Functions ---
+
+        function updateWalletUI() {
+            document.getElementById('wallet-balance-display-dashboard').textContent = formatArena(currentEarenaBalance);
+            document.getElementById('wallet-balance-display-wallet').textContent = formatArena(currentEarenaBalance);
+        }
+
+        function updateProfileUI() {
+            const statusText = document.getElementById('twitter-status-text');
+            const handleInput = document.getElementById('twitter-handle');
+            
+            if (twitterHandle) {
+                statusText.textContent = `Connected as @${twitterHandle}`;
+                statusText.classList.remove('text-red-600');
+                statusText.classList.add('text-green-600');
+                handleInput.value = twitterHandle;
+            } else {
+                statusText.textContent = 'Disconnected';
+                statusText.classList.remove('text-green-600');
+                statusText.classList.add('text-red-600');
+                handleInput.value = '';
+            }
+        }
+
+        function updateTasksUI(totalLockedEarena) {
+            const listContainer = document.getElementById('tasks-list');
+            listContainer.innerHTML = '';
+            
+            document.getElementById('total-tasks-count').textContent = availableTasks.length;
+            document.getElementById('total-tasks-arena-value').textContent = formatArena(totalLockedEarena);
+            document.getElementById('no-tasks-message').style.display = availableTasks.length === 0 ? 'block' : 'none';
+
+            availableTasks.forEach(task => {
+                const required = task.targetCount - (task.completedCount || 0);
+                // Only show tasks that are not yet complete
+                if (required <= 0) return; 
+
+                const taskCard = document.createElement('div');
+                
+                const taskTypeIcon = {
+                    retweet: '<i class="ph ph-arrows-counter-clockwise text-xl text-black"></i>',
+                    comment: '<i class="ph ph-chat-circle-text text-xl text-black"></i>',
+                    like: '<i class="ph ph-heart text-xl text-black"></i>',
+                    quote: '<i class="ph ph-chat-text text-xl text-black"></i>'
+                }[task.type] || '<i class="ph ph-activity text-xl text-black"></i>';
+
+                const progress = ((task.completedCount || 0) / task.targetCount) * 100;
+                const reward = formatArena(task.rewardPerEngagement || 0);
+                
+                taskCard.className = 'p-5 border border-black rounded-xl shadow-md transition-shadow hover:shadow-lg';
+                taskCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-3 border-b pb-2 border-dashed border-gray-300">
+                        <div class="flex items-center">
+                            ${taskTypeIcon}
+                            <span class="ml-3 font-bold uppercase">${task.type} Request</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-semibold text-gray-700 block">Reward per:</span>
+                            <span class="text-xl font-extrabold text-black">${reward} $eARENA</span>
+                        </div>
+                    </div>
+                    <div class="text-sm space-y-2">
+                        <p class="truncate"><span class="font-semibold">Creator:</span> @${task.creatorHandle}</p>
+                        <p class="truncate"><span class="font-semibold">Post:</span> <a href="${task.postUrl}" target="_blank" class="underline hover:text-gray-600">${task.postUrl}</a></p>
+                        <p><span class="font-semibold">Goal:</span> ${task.targetCount} ${task.type}s</p>
+                        <p><span class="font-semibold">Remaining:</span> <span class="${required > 0 ? 'text-red-600' : 'text-green-600'}">${required}</span></p>
+                        <div class="w-full h-2 bg-gray-200 rounded-full mt-3">
+                            <div class="h-2 bg-black rounded-full" style="width: ${progress.toFixed(0)}%"></div>
+                        </div>
+                        <p class="text-xs text-right text-gray-700">${progress.toFixed(1)}% complete (Total Budget: ${formatArena(task.totalBudget)})</p>
+                    </div>
+                    <button data-task-id="${task.id}" 
+                            data-task-type="${task.type}"
+                            data-task-reward="${reward}"
+                            data-task-url="${task.postUrl}"
+                            class="engage-button mt-4 w-full bg-black text-white p-3 rounded-lg border border-black transition-colors hover:bg-gray-800 font-medium">
+                        Engage & Submit Proof
+                    </button>
+                `;
+                listContainer.appendChild(taskCard);
+            });
+
+            document.querySelectorAll('.engage-button').forEach(button => {
+                button.onclick = (e) => handleTaskEngagement(e.target.dataset);
+            });
+        }
+        
+        function renderApprovalSection() {
+            const listContainer = document.getElementById('approvals-list');
+            listContainer.innerHTML = '';
+            
+            document.getElementById('no-pending-proofs').classList.toggle('hidden', proofsToReview.length > 0);
+
+            proofsToReview.forEach(proof => {
+                const proofCard = document.createElement('div');
+                
+                const TWO_DAYS_MS = 172800000;
+                const submissionTime = proof.submittedAt || 0;
+                const deadline = submissionTime + TWO_DAYS_MS;
+                const isOverdue = Date.now() > deadline;
+                const overdueMessage = isOverdue ? '<span class="text-red-600 font-bold ml-2">(Auto-Approval Due!)</span>' : '';
+                const timeAgo = (new Date(submissionTime)).toLocaleDateString();
+
+                proofCard.className = 'p-5 border border-black rounded-xl shadow-md bg-gray-50';
+                proofCard.innerHTML = `
+                    <div class="flex justify-between items-center mb-3 border-b pb-3 border-dashed border-gray-300">
+                        <h4 class="font-bold text-lg">${proof.taskType.toUpperCase()} Proof for Task ID: ${proof.taskId.substring(0, 8)}...</h4>
+                        <span class="text-xl font-extrabold text-black">+${formatArena(proof.reward)} $eARENA</span>
+                    </div>
+                    <div class="text-sm space-y-2 mb-4">
+                        <p><span class="font-semibold">Engager:</span> @${proof.twitterHandle} (User ID: ${proof.proofId.substring(0, 10)}...)</p>
+                        <p><span class="font-semibold">Submitted:</span> ${timeAgo}${overdueMessage}</p>
+                        <p><span class="font-semibold">Proof Link:</span> <a href="${proof.proofUrl}" target="_blank" class="underline hover:text-blue-600 break-all">${proof.proofUrl}</a></p>
+                        <p><span class="font-semibold">Original Post:</span> <a href="${proof.taskPostUrl}" target="_blank" class="underline hover:text-blue-600 break-all">${proof.taskPostUrl}</a></p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button data-task-id="${proof.taskId}" data-proof-id="${proof.proofId}" onclick="approveProof(this.dataset)" class="flex-1 bg-green-600 text-white p-3 rounded-lg transition-colors hover:bg-green-700 font-medium">
+                            <i class="ph ph-check text-xl mr-2"></i> Approve & Pay
+                        </button>
+                        <button data-task-id="${proof.taskId}" data-proof-id="${proof.proofId}" onclick="rejectProof(this.dataset)" class="flex-1 bg-red-600 text-white p-3 rounded-lg transition-colors hover:bg-red-700 font-medium">
+                            <i class="ph ph-x text-xl mr-2"></i> Reject
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(proofCard);
+            });
+        }
+        
+        function renderHistory(history) {
+            const listContainer = document.getElementById('history-list');
+            listContainer.innerHTML = '';
+            
+            history.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // Sort by newest first
+            
+            document.getElementById('no-history-message').classList.toggle('hidden', history.length > 0);
+            
+            history.forEach(item => {
+                const isDebit = item.amount < 0 || item.type.includes('(Outlay)') || item.type.includes('Claim');
+                const color = isDebit ? 'text-red-600' : 'text-green-600';
+                const sign = isDebit ? '-' : '+';
+                
+                const historyItem = document.createElement('div');
+                historyItem.className = 'flex justify-between items-center p-3 border border-gray-200 rounded-lg';
+                
+                let statusBadge = '';
+                if (item.status) {
+                     let statusColor, statusText;
+                     if (item.status === 'approved' || item.status === 'auto_approved') {
+                        statusColor = 'bg-green-100 text-green-800';
+                        statusText = item.status === 'auto_approved' ? 'AUTO-APPROVED' : 'APPROVED';
+                     } else if (item.status === 'pending') {
+                         statusColor = 'bg-yellow-100 text-yellow-800';
+                         statusText = 'PENDING CREATOR REVIEW';
+                     } else if (item.status === 'tx_pending_verification') {
+                         statusColor = 'bg-blue-100 text-blue-800';
+                         statusText = 'TX VERIFICATION PENDING';
+                     } else {
+                         statusColor = 'bg-red-100 text-red-800';
+                         statusText = 'REJECTED';
+                     }
+                     statusBadge = `<span class="text-xs uppercase font-bold p-1 rounded ${statusColor}">${statusText}</span>`;
+                }
+                
+                historyItem.innerHTML = `
+                    <div>
+                        <p class="font-medium">${item.type}</p>
+                        ${statusBadge}
+                        <p class="text-xs text-gray-500 mt-1">${new Date(item.timestamp || item.submittedAt).toLocaleDateString()} ${new Date(item.timestamp || item.submittedAt).toLocaleTimeString()}</p>
+                    </div>
+                    <div class="font-bold ${color}">
+                        ${sign}${formatArena(Math.abs(item.amount))} $eARENA
+                    </div>
+                `;
+                listContainer.appendChild(historyItem);
+            });
+        }
+
+
+        // --- Modals and UI State Changes ---
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('invisible', 'opacity-0');
+            modal.classList.add('visible', 'opacity-100');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('visible', 'opacity-100');
+            modal.classList.add('invisible', 'opacity-0');
+            // Reset forms upon closing
+            if(modalId === 'proof-modal') document.getElementById('proof-submission-form').reset();
+            if(modalId === 'deposit-modal') document.getElementById('deposit-verification-form').reset();
+        }
+        
+        // Proof Modal Handlers
+        function handleTaskEngagement(taskData) {
+            if (!twitterHandle) {
+                showMessage("Please connect your social handle on the Profile page first.", 'error');
+                return;
+            }
+            document.getElementById('modal-task-id').value = taskData.taskId;
+            document.getElementById('modal-task-details').innerHTML = `<span class="font-medium uppercase">${taskData.taskType}</span> on post: <a href="${taskData.taskUrl}" target="_blank" class="underline">${taskData.taskUrl.substring(0, 30)}...</a>`;
+            document.getElementById('modal-task-reward').textContent = `${taskData.taskReward} $eARENA`;
+            openModal('proof-modal');
+        }
+        document.getElementById('close-proof-modal').addEventListener('click', () => closeModal('proof-modal'));
+
+        document.getElementById('proof-submission-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const taskId = document.getElementById('modal-task-id').value;
+            const proofUrl = document.getElementById('proof-url').value;
+            if (!proofUrl.startsWith('http')) { showMessage("Please provide a valid link to your engagement post.", 'error'); return; }
+            await submitProof(taskId, proofUrl);
+            closeModal('proof-modal');
+        });
+        
+        // Deposit Modal Handlers
+        function openDepositModal() {
+             openModal('deposit-modal');
+        }
+        document.getElementById('close-deposit-modal').addEventListener('click', () => closeModal('deposit-modal'));
+
+        document.getElementById('deposit-verification-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const amountSent = parseFloat(document.getElementById('deposit-amount').value);
+            const txId = document.getElementById('deposit-txid').value.trim();
+            if (txId.length < 10 || txId.includes(' ')) {
+                showMessage("Please provide a valid transaction hash (TxID).", 'error');
+                return;
+            }
+            if (amountSent <= 0) {
+                 showMessage("Amount sent must be greater than zero.", 'error');
+                 return;
+            }
+            
+            await submitDepositVerification(amountSent, txId);
+            closeModal('deposit-modal');
+        });
+
+
+        // --- Core Interaction Handlers (Dapp Logic) ---
+        
+        /** Submits proof to the task creator for manual review/approval */
+        async function submitProof(taskId, proofUrl) {
+            const userProofRef = getUserProofDocRef(taskId, userId);
+            const proofSnap = await getDoc(userProofRef);
+
+            if (proofSnap.exists()) { showMessage("You have already submitted proof for this task. Check History for status.", 'error'); return; }
+            
+            const taskDocRef = getTaskDocRef(taskId);
+            const taskSnap = await getDoc(taskDocRef);
+            if (!taskSnap.exists()) { showMessage("Error: Task not found.", 'error'); return; }
+            const task = taskSnap.data();
+            const rewardAmount = task.rewardPerEngagement;
+
+            try {
+                await setDoc(userProofRef, {
+                    userId: userId,
+                    twitterHandle: twitterHandle,
+                    proofUrl: proofUrl,
+                    submittedAt: Date.now(),
+                    status: 'pending', // Requires creator approval
+                    taskType: task.type,
+                    taskId: taskId,
+                    amount: rewardAmount
+                });
+                
+                await addDoc(getHistoryCollectionRef(userId), {
+                    type: 'Task Payout (Submitted)',
+                    amount: rewardAmount,
+                    status: 'pending',
+                    timestamp: Date.now()
+                });
+
+                showMessage(`Proof submitted! Awaiting creator approval for ${formatArena(rewardAmount)} $eARENA.`, 'info');
+
+            } catch (error) {
+                console.error("Proof submission failed:", error);
+                showMessage("Submission failed. Please try again later.", 'error');
+            }
+        }
+        
+        /** Handles the user submitting the external transaction hash for verification */
+        async function submitDepositVerification(arenaAmount, txId) {
+            const earenaReceived = arenaAmount * EARENA_CONVERSION_RATE;
+            
+            try {
+                // Record the pending deposit verification in the user's history
+                await addDoc(getHistoryCollectionRef(userId), {
+                    type: 'Deposit ($ARENA to $eARENA)',
+                    amount: earenaReceived,
+                    txId: txId,
+                    status: 'tx_pending_verification',
+                    timestamp: Date.now()
+                });
+
+                // In a real application, an admin system would now check the Avalanche chain for this TxID.
+                // For this exercise, we will simulate the verification success after a delay.
+                
+                // --- Simulation of Admin Verification (Simulate success) ---
+                showMessage("TxID submitted. Verification in progress (20s). Do not close the tab.", 'info');
+                
+                await new Promise(resolve => setTimeout(resolve, 20000)); // 20 second simulation delay
+
+                const userDocRef = getUserProfileRef(userId);
+                await updateDoc(userDocRef, { balance: increment(earenaReceived) }); 
+                
+                // Update history status (simulating an admin updating the doc directly)
+                // Note: We cannot update the doc directly without its ID, so we add a final 'Credit' entry.
+                 await addDoc(getHistoryCollectionRef(userId), {
+                    type: 'Deposit Confirmed (Credit)',
+                    amount: earenaReceived,
+                    status: 'approved',
+                    timestamp: Date.now() + 1 // Ensure it sorts after the pending entry
+                });
+
+
+                showMessage(`Success! ${formatArena(arenaAmount)} $ARENA converted to ${formatArena(earenaReceived)} $eARENA. Balance credited.`, 'success');
+                // --- End Simulation ---
+
+            } catch (error) {
+                console.error("Deposit verification failed:", error);
+                showMessage("Deposit verification failed. Please try again later.", 'error');
+            }
+        }
+        
+        // Function called by the creator to APPROVE a pending proof
+        async function approveProof({ taskId, proofId }) {
+            const proofDocRef = getUserProofDocRef(taskId, proofId);
+            const taskDocRef = getTaskDocRef(taskId);
+            const userWalletRef = getUserProfileRef(proofId); // Wallet of the engaging user
+            
+            try {
+                const proofSnap = await getDoc(proofDocRef);
+                const taskSnap = await getDoc(taskDocRef);
+                
+                if (!proofSnap.exists() || !taskSnap.exists()) { showMessage("Approval failed: Proof or Task not found.", 'error'); return; }
+
+                const task = taskSnap.data();
+                const rewardAmount = task.rewardPerEngagement;
+                
+                // 1. Mark Proof as Approved
+                await updateDoc(proofDocRef, { status: 'approved', approvedBy: userId, approvedAt: Date.now() });
+                
+                // 2. Update Task Progress
+                await updateDoc(taskDocRef, { completedCount: increment(1), totalBudget: increment(-rewardAmount) });
+                
+                // 3. Pay the User
+                await updateDoc(userWalletRef, { balance: increment(rewardAmount) });
+                
+                // 4. Update engaging user's history
+                await addDoc(getHistoryCollectionRef(proofId), {
+                    type: 'Task Payout (Approved)', amount: rewardAmount, status: 'approved', timestamp: Date.now()
+                });
+
+                showMessage(`Approved @${proofSnap.data().twitterHandle}. ${formatArena(rewardAmount)} $eARENA paid.`, 'success');
+                await fetchProofsForReview(); // Re-fetch proofs
+
+            } catch (error) {
+                console.error("Approval failed:", error);
+                showMessage("Approval transaction failed.", 'error');
+            }
+        }
+        
+        // Function called by the creator to REJECT a pending proof
+        async function rejectProof({ taskId, proofId }) {
+            const proofDocRef = getUserProofDocRef(taskId, proofId);
+            
+            try {
+                const proofSnap = await getDoc(proofDocRef);
+                if (!proofSnap.exists()) { showMessage("Rejection failed: Proof not found.", 'error'); return; }
+
+                // 1. Mark Proof as Rejected
+                await updateDoc(proofDocRef, { status: 'rejected', rejectedBy: userId, rejectedAt: Date.now() });
+                
+                // 2. Update engaging user's history
+                 await addDoc(getHistoryCollectionRef(proofId), {
+                    type: 'Task Payout (Rejected)', amount: proofSnap.data().amount, status: 'rejected', timestamp: Date.now()
+                });
+                
+                showMessage(`Rejected proof from @${proofSnap.data().twitterHandle}. The user can submit a new proof.`, 'info');
+                await fetchProofsForReview(); // Re-fetch proofs
+
+            } catch (error) {
+                console.error("Rejection failed:", error);
+                showMessage("Rejection transaction failed.", 'error');
+            }
+        }
+
+
+        async function connectTwitter() {
+            const handleInput = document.getElementById('twitter-handle').value.trim();
+            if (!handleInput) { showMessage("Please enter a valid social handle.", 'error'); return; }
+            
+            try {
+                const userDocRef = getUserProfileRef(userId);
+                await setDoc(userDocRef, { twitterHandle: handleInput }, { merge: true });
+                showMessage(`Social handle connected as @${handleInput}.`, 'info');
+            } catch (error) {
+                console.error("Failed to update social handle:", error);
+                showMessage("Failed to connect handle. Please try again.", 'error');
+            }
+        }
+
+        async function claimArena() {
+            const CLAIM_AMOUNT_MAX = 50.00; // Example weekly claim limit
+            const claimAmount = Math.min(CLAIM_AMOUNT_MAX, currentEarenaBalance);
+            
+            if (claimAmount < 1.00) {
+                 showMessage("Insufficient $eARENA balance or amount too low for processing. Minimum claim is 1.00 $eARENA.", 'error');
+                 return;
+            }
+
+            try {
+                const userDocRef = getUserProfileRef(userId);
+                // Deduct $eARENA from platform balance
+                await updateDoc(userDocRef, { balance: increment(-claimAmount) });
+                
+                // This simulates sending the real $ARENA to the user's connected wallet (via auth/profile data)
+                
+                await addDoc(getHistoryCollectionRef(userId), {
+                    type: 'Claim ($eARENA to $ARENA)',
+                    amount: -claimAmount,
+                    status: 'approved', // Assuming automated payout
+                    timestamp: Date.now()
+                });
+                
+                showMessage(`Successfully processed claim of ${formatArena(claimAmount)} $eARENA. Check your external wallet for $ARENA in a few minutes.`, 'success');
+            } catch (error) {
+                console.error("Claim failed:", error);
+                showMessage("Claim transaction failed.", 'error');
+            }
+        }
+
+        // Event listener for Create Task Form
+        document.getElementById('create-task-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const postUrl = document.getElementById('post-url').value;
+            const taskType = document.getElementById('task-type').value;
+            const totalBudget = parseFloat(document.getElementById('task-budget').value);
+            const targetCount = parseInt(document.getElementById('target-count').value, 10);
+            const rewardPerEngagement = totalBudget / targetCount;
+
+
+            if (totalBudget > currentEarenaBalance) { showMessage("Task budget exceeds your current $eARENA balance. Please deposit funds.", 'error'); return; }
+            if (!twitterHandle) { showMessage("You must connect your social handle to create tasks.", 'error'); return; }
+            if (rewardPerEngagement <= 0) { showMessage("Invalid budget or target count. Reward per engagement must be positive.", 'error'); return; }
+
+            try {
+                // 1. Deduct funds from the user's wallet
+                const userDocRef = getUserProfileRef(userId);
+                await updateDoc(userDocRef, { balance: increment(-totalBudget) });
+
+                // 2. Add the new task to the public collection
+                const taskData = {
+                    postUrl: postUrl, type: taskType, totalBudget: totalBudget, targetCount: targetCount,
+                    rewardPerEngagement: rewardPerEngagement, completedCount: 0, creatorId: userId,
+                    creatorHandle: twitterHandle, createdAt: Date.now()
+                };
+                
+                await addDoc(getTasksCollectionRef(), taskData);
+                
+                // 3. Record history
+                await addDoc(getHistoryCollectionRef(userId), { type: 'Task Funded (Outlay)', amount: totalBudget, timestamp: Date.now() });
+                
+                showMessage(`Task created successfully! ${formatArena(totalBudget)} $eARENA locked.`, 'success');
+                
+                document.getElementById('create-task-form').reset();
+                navigateToSection('tasks-section'); 
+            } catch (error) {
+                console.error("Error creating task:", error);
+                showMessage("Failed to create task. Funds not deducted.", 'error');
+            }
+        });
+        
+        // Live reward calculation preview
+        document.getElementById('task-budget').addEventListener('input', updateRewardPreview);
+        document.getElementById('target-count').addEventListener('input', updateRewardPreview);
+        function updateRewardPreview() {
+             const budget = parseFloat(document.getElementById('task-budget').value) || 0;
+             const count = parseInt(document.getElementById('target-count').value, 10) || 1;
+             const reward = count > 0 ? budget / count : 0;
+             document.getElementById('reward-preview').textContent = `Reward per engagement: ${formatArena(reward)} $eARENA`;
+        }
+        updateRewardPreview(); // Initial call
+
+
+        // --- Navigation Logic ---
+        
+        const menuButton = document.getElementById('menu-button');
+        const navMenu = document.getElementById('nav-menu');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const overlay = document.getElementById('overlay');
+        
+        function toggleMenu() {
+            const isOpen = navMenu.classList.contains('translate-x-0');
+            if (isOpen) {
+                navMenu.classList.remove('translate-x-0');
+                navMenu.classList.add('translate-x-full');
+                overlay.classList.remove('opacity-50');
+                overlay.classList.add('opacity-0');
+                overlay.classList.add('pointer-events-none');
+            } else {
+                navMenu.classList.remove('translate-x-full');
+                navMenu.classList.add('translate-x-0');
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-50');
+                overlay.classList.remove('pointer-events-none');
+            }
+        }
+
+        function navigateToSection(sectionId) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            toggleMenu(); // Close menu after selection
+        }
+
+        menuButton.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = e.currentTarget.getAttribute('data-section');
+                navigateToSection(sectionId);
+            });
+        });
+
+        // Initialize App on Load
+        window.onload = initializeAppAndAuth;
+
+        // Make functions globally available for inline HTML buttons
+        window.openDepositModal = openDepositModal;
+        window.claimArena = claimArena;
+        window.connectTwitter = connectTwitter;
+        window.navigateToSection = navigateToSection; 
+        window.approveProof = approveProof;
+        window.rejectProof = rejectProof;
+    </script>
+</body>
+</html>
