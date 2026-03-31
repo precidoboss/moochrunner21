@@ -1,1208 +1,1494 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arena.Social - Decentralized Engagement</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Phosphor Icons (for professional-looking icons) -->
-    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-    <style>
-        /* Custom professional black/white theme */
-        :root {
-            --primary: #000000;
-            --secondary: #ffffff;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HASHLIP — HashCash Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020608;
+    --bg2: #040d10;
+    --panel: #060f14;
+    --panel2: #0a1a20;
+    --border: #0f3040;
+    --border2: #1a4a60;
+    --green: #00ff88;
+    --green2: #00cc66;
+    --cyan: #00d4ff;
+    --cyan2: #0099cc;
+    --orange: #ff6600;
+    --orange2: #cc4400;
+    --red: #ff2244;
+    --yellow: #ffcc00;
+    --text: #c0e8f0;
+    --text2: #6090a0;
+    --text3: #2a5060;
+    --glow-green: 0 0 20px rgba(0,255,136,0.4);
+    --glow-cyan: 0 0 20px rgba(0,212,255,0.4);
+    --glow-orange: 0 0 20px rgba(255,102,0,0.4);
+  }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--secondary);
-            color: var(--primary);
-            min-height: 100vh;
-        }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* Utility for the active section */
-        .page-section {
-            display: none;
-            padding-top: 5rem; /* Space for the header */
-        }
-        .page-section.active {
-            display: block;
-        }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-        /* Custom scrollbar for minimalist look */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background-color: #000000;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background-color: #ffffff;
-        }
+  /* SCANLINES */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,20,30,0.15) 2px,
+      rgba(0,20,30,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
 
-        /* Modal specific styling */
-        .modal {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-    </style>
+  /* GRID BG */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,212,255,0.04) 0%, transparent 100%);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan), 0 0 60px rgba(0,212,255,0.2);
+  }
+  .logo span { color: var(--green); text-shadow: var(--glow-green); }
+
+  .nav { display: flex; gap: 4px; }
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 8px 18px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .nav-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.08), transparent);
+    transition: left 0.3s;
+  }
+  .nav-btn:hover::before { left: 100%; }
+  .nav-btn:hover, .nav-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    box-shadow: inset 0 0 20px rgba(0,212,255,0.05);
+  }
+  .nav-btn.active {
+    background: rgba(0,212,255,0.06);
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: var(--glow-green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 32px; }
+  .page.active { display: block; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--cyan);
+    opacity: 0.4;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(15,48,64,0.5);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .data-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .data-table .mono { font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border: 1px solid;
+    text-transform: uppercase;
+  }
+  .badge-gpu { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,0.06); }
+  .badge-asic { color: var(--orange); border-color: var(--orange); background: rgba(255,102,0,0.06); }
+  .badge-cpu { color: var(--yellow); border-color: var(--yellow); background: rgba(255,204,0,0.06); }
+  .badge-rig { color: var(--green); border-color: var(--green); background: rgba(0,255,136,0.06); }
+  .badge-other { color: var(--text2); border-color: var(--text3); background: transparent; }
+
+  .delta-pos { color: var(--green); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .delta-neg { color: var(--red); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+  .delta-neu { color: var(--text2); font-family: 'Share Tech Mono', monospace; font-size: 12px; }
+
+  /* PANEL */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text2);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* LOADING */
+  .loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    gap: 16px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text2);
+    animation: blink 1.2s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* FACILITY BUILDER */
+  .facility-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr 360px;
+  }
+
+  .miner-select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .miner-select-grid::-webkit-scrollbar { width: 4px; }
+  .miner-select-grid::-webkit-scrollbar-track { background: var(--bg); }
+  .miner-select-grid::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .miner-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .miner-card:hover { border-color: var(--border2); background: rgba(0,212,255,0.04); }
+  .miner-card.selected {
+    border-color: var(--green);
+    background: rgba(0,255,136,0.05);
+    box-shadow: inset 0 0 20px rgba(0,255,136,0.05);
+  }
+  .miner-card-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+  .miner-card-stats {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .miner-stat {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+  }
+  .miner-stat span { color: var(--cyan); }
+  .miner-qty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .qty-btn {
+    width: 24px; height: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .qty-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .qty-display {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: var(--cyan);
+    min-width: 24px;
+    text-align: center;
+  }
+
+  /* RESULTS PANEL */
+  .result-panel {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 20px;
+    position: sticky;
+    top: 80px;
+    height: fit-content;
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(15,48,64,0.5);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-key {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+  .result-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan);
+  }
+  .result-val.green { color: var(--green); }
+  .result-val.red { color: var(--red); }
+  .result-val.yellow { color: var(--yellow); }
+  .result-val.orange { color: var(--orange); }
+  .result-val.big {
+    font-size: 20px;
+    text-shadow: var(--glow-green);
+  }
+
+  /* NETWORK STATS */
+  .net-bar {
+    height: 6px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .net-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    transition: width 1s ease;
+  }
+
+  /* SEARCH + FILTER */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-input {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 8px 14px;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    letter-spacing: 1px;
+    transition: border-color 0.2s;
+  }
+  .search-input::placeholder { color: var(--text3); }
+  .search-input:focus { border-color: var(--cyan); }
+
+  .filter-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .refresh-btn:hover {
+    background: rgba(0,255,136,0.08);
+    box-shadow: var(--glow-green);
+  }
+  .refresh-btn.loading { opacity: 0.6; cursor: not-allowed; }
+  .refresh-btn.loading .spin-icon { animation: spin 0.8s linear infinite; }
+
+  /* ERROR */
+  .error-box {
+    background: rgba(255,34,68,0.06);
+    border: 1px solid rgba(255,34,68,0.3);
+    padding: 16px 20px;
+    color: var(--red);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  /* TICKER */
+  .ticker-wrap {
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,212,255,0.03);
+    padding: 6px 0;
+  }
+  .ticker {
+    display: flex;
+    gap: 48px;
+    animation: ticker 30s linear infinite;
+    white-space: nowrap;
+    width: max-content;
+  }
+  @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .ticker-item {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 2px;
+  }
+  .ticker-item .v { color: var(--cyan); }
+  .ticker-item .g { color: var(--green); }
+  .ticker-item .o { color: var(--orange); }
+
+  /* CORNER DECORATIONS */
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: var(--cyan2);
+    border-style: solid;
+  }
+  .corner-tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+  .corner-br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .img-miner {
+    width: 36px; height: 36px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .inner-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .inner-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 10px 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+  .inner-tab:hover { color: var(--text); }
+  .inner-tab.active { border-bottom-color: var(--cyan); color: var(--cyan); }
+
+  .elected-miners-list { margin-top: 12px; }
+  .elected-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(15,48,64,0.5);
+    font-size: 12px;
+  }
+  .elected-name { color: var(--text); font-weight: 600; flex: 1; }
+  .elected-qty { color: var(--cyan); font-family: 'Share Tech Mono', monospace; font-size: 11px; width: 40px; text-align: center; }
+  .elected-hash { color: var(--green); font-family: 'Share Tech Mono', monospace; font-size: 11px; width: 80px; text-align: right; }
+
+  .calc-btn {
+    width: 100%;
+    margin-top: 16px;
+    background: linear-gradient(90deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1));
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    box-shadow: inset 0 0 0 rgba(0,255,136,0);
+  }
+  .calc-btn:hover {
+    background: linear-gradient(90deg, rgba(0,255,136,0.15), rgba(0,212,255,0.15));
+    box-shadow: var(--glow-green), inset 0 0 30px rgba(0,255,136,0.05);
+  }
+
+  .profitability-bar {
+    height: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .profitability-fill {
+    height: 100%;
+    transition: width 0.8s ease, background 0.5s;
+  }
+
+  .tooltip {
+    position: relative;
+    cursor: help;
+  }
+  .tooltip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 999;
+    letter-spacing: 1px;
+  }
+  .tooltip:hover::after { opacity: 1; }
+
+  .market-value-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 0;
+    overflow: hidden;
+    margin-top: 3px;
+  }
+  .market-value-fill {
+    height: 100%;
+  }
+</style>
 </head>
-<body class="selection:bg-black selection:text-white">
+<body>
+<div class="wrap">
 
-    <!-- Header and Navigation -->
-    <header class="fixed top-0 left-0 w-full bg-white border-b border-black z-30 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-            <h1 class="text-xl font-bold tracking-widest uppercase">
-                ARENA.SOCIAL
-            </h1>
-            
-            <!-- Hamburger Menu Button -->
-            <button id="menu-button" class="p-2 border border-black rounded-lg transition-colors hover:bg-black hover:text-white focus:outline-none" aria-label="Toggle Menu">
-                <i class="ph ph-list text-2xl"></i>
-            </button>
-        </div>
-    </header>
+<!-- TICKER -->
+<div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker" id="ticker">
+    <span class="ticker-item">HASHLIP <span class="v">v1.0</span></span>
+    <span class="ticker-item">NETWORK <span class="v">AVALANCHE</span></span>
+    <span class="ticker-item">ELEC RATE <span class="o" id="tick-elec">8.88 hCASH/kWh</span></span>
+    <span class="ticker-item">MARKETPLACE <span class="v" id="tick-listings">LOADING...</span></span>
+    <span class="ticker-item">MINERS <span class="g" id="tick-miners">LOADING...</span></span>
+    <span class="ticker-item">EMISSION <span class="v">2.5 hCASH/BLOCK</span></span>
+    <span class="ticker-item">HALVING <span class="v">EVERY ~48 DAYS</span></span>
+    <span class="ticker-item">MAX SUPPLY <span class="g">21,000,000 hCASH</span></span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item">HASHLIP <span class="v">v1.0</span></span>
+    <span class="ticker-item">NETWORK <span class="v">AVALANCHE</span></span>
+    <span class="ticker-item">ELEC RATE <span class="o" id="tick-elec2">8.88 hCASH/kWh</span></span>
+    <span class="ticker-item">MARKETPLACE <span class="v" id="tick-listings2">LOADING...</span></span>
+    <span class="ticker-item">MINERS <span class="g" id="tick-miners2">LOADING...</span></span>
+    <span class="ticker-item">EMISSION <span class="v">2.5 hCASH/BLOCK</span></span>
+    <span class="ticker-item">HALVING <span class="v">EVERY ~48 DAYS</span></span>
+    <span class="ticker-item">MAX SUPPLY <span class="g">21,000,000 hCASH</span></span>
+  </div>
+</div>
 
-    <!-- Navigation Drawer (Overlay Menu) -->
-    <nav id="nav-menu" class="fixed top-0 right-0 h-full w-64 bg-white border-l border-black shadow-2xl z-40 transform translate-x-full transition-transform duration-300">
-        <div class="p-6">
-            <h2 class="text-2xl font-semibold mb-8 border-b pb-2 border-black">Menu</h2>
-            <ul id="nav-list" class="space-y-4 font-medium">
-                <li><button data-section="tasks-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-chart-line text-lg mr-3"></i>Tasks (Dashboard)</button></li>
-                <li><button data-section="approvals-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-checks text-lg mr-3"></i>Approvals (Creator)</button></li>
-                <li><button data-section="wallet-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-wallet text-lg mr-3"></i>Wallet & History</button></li>
-                <li><button data-section="profile-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-user-circle text-lg mr-3"></i>Profile</button></li>
-                <li><button data-section="create-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-plus-circle text-lg mr-3"></i>Create Task</button></li>
-                <li><button data-section="about-section" class="nav-link w-full text-left p-3 rounded-lg border border-transparent hover:border-black hover:bg-gray-100 transition-all flex items-center"><i class="ph ph-info text-lg mr-3"></i>About Arena</button></li>
-            </ul>
-            <div class="mt-8 pt-4 border-t border-black">
-                <p class="text-sm">User ID:</p>
-                <code id="user-id-display" class="block mt-1 p-2 text-xs bg-gray-100 border border-black rounded-lg break-all">...loading</code>
-            </div>
-        </div>
-    </nav>
-    <div id="overlay" class="fixed inset-0 bg-black opacity-0 z-30 transition-opacity duration-300 pointer-events-none"></div>
+<!-- HEADER -->
+<header>
+  <div class="logo">HASH<span>LIP</span></div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showPage('market')">MARKET</button>
+    <button class="nav-btn" onclick="showPage('miners')">MINERS</button>
+    <button class="nav-btn" onclick="showPage('facility')">FACILITY</button>
+    <button class="nav-btn" onclick="showPage('network')">NETWORK</button>
+  </nav>
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot" style="background:var(--text3)"></div>
+    <span id="status-text" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3)">CONNECTING...</span>
+  </div>
+</header>
 
-    <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+<!-- MARKET PAGE -->
+<div id="page-market" class="page active">
+  <div class="section-title">MARKETPLACE INTELLIGENCE</div>
 
-        <!-- 1. Tasks/Dashboard Section -->
-        <section id="tasks-section" class="page-section active">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Tasks Dashboard</h2>
-
-            <!-- Metrics Card Row -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                <div class="p-6 border border-black rounded-xl shadow-lg">
-                    <p class="text-sm uppercase font-semibold text-gray-700">Total Available Tasks</p>
-                    <p id="total-tasks-count" class="text-4xl font-bold mt-2">0</p>
-                </div>
-                <div class="p-6 border border-black rounded-xl shadow-lg">
-                    <p class="text-sm uppercase font-semibold text-gray-700">Your $eARENA Balance (Platform)</p>
-                    <p id="wallet-balance-display-dashboard" class="text-4xl font-bold mt-2">0.00</p>
-                </div>
-                <div class="p-6 border border-black rounded-xl shadow-lg">
-                    <p class="text-sm uppercase font-semibold text-gray-700">Total $eARENA Locked</p>
-                    <p id="total-tasks-arena-value" class="text-4xl font-bold mt-2">0.00</p>
-                </div>
-                <div class="p-6 border border-black rounded-xl shadow-lg">
-                    <p class="text-sm uppercase font-semibold text-gray-700">$ARENA Live Price (USD)</p>
-                    <p id="arena-price-display" class="text-4xl font-bold mt-2">
-                        <span id="price-value">$0.0000</span>
-                        <i id="price-loader" class="ph ph-circle-notch animate-spin text-xl text-gray-400 ml-2"></i>
-                    </p>
-                </div>
-            </div>
-
-            <!-- Task List -->
-            <h3 class="text-2xl font-bold mb-4">Open Engagement Tasks</h3>
-            <div id="tasks-list" class="space-y-4">
-                <p id="no-tasks-message" class="text-gray-500 italic">No open tasks found. Be the first to <a href="#" data-section="create-section" class="nav-link underline text-black">create one!</a></p>
-            </div>
-        </section>
-
-        <!-- 2. Approvals Section -->
-        <section id="approvals-section" class="page-section">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Proof Approvals & Quality Control</h2>
-            <p class="mb-6 text-gray-700">Review submissions for the tasks you created. Approve submissions to pay the user, or reject low-quality engagement.</p>
-
-            <div id="approvals-list" class="space-y-6">
-                <!-- Proofs for approval will be injected here -->
-            </div>
-            <p id="no-pending-proofs" class="text-gray-500 italic hidden mt-4">No pending proofs requiring your review.</p>
-        </section>
-
-        <!-- 3. Wallet Section -->
-        <section id="wallet-section" class="page-section">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Your Wallet & Transaction History</h2>
-
-            <!-- Wallet Overview -->
-            <div class="p-8 border-4 border-black rounded-xl max-w-xl mx-auto text-center">
-                <p class="text-xl uppercase font-medium">Current $eARENA Balance (Platform Use)</p>
-                <p id="wallet-balance-display-wallet" class="text-6xl font-extrabold mt-4">0.00</p>
-                <p class="text-lg mt-2 font-mono text-gray-700">$eARENA</p>
-            </div>
-
-            <!-- Deposit/Withdraw/Claim Actions -->
-            <div class="mt-10 max-w-xl mx-auto space-y-4">
-                <p class="text-lg font-semibold border-b pb-2 border-black">Platform Token Management</p>
-                <button onclick="openDepositModal()" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 flex items-center justify-center font-medium">
-                    <i class="ph ph-currency-btc text-xl mr-3"></i> Buy $eARENA (Initiate Deposit)
-                </button>
-                <button onclick="claimArena()" class="w-full text-black p-4 rounded-lg border border-black transition-colors hover:bg-gray-100 flex items-center justify-center font-medium">
-                    <i class="ph ph-arrows-clockwise text-xl mr-3"></i> Weekly Claim $eARENA to $ARENA
-                </button>
-            </div>
-            
-            <!-- History Tabs -->
-            <div class="mt-12">
-                <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Transaction History</h3>
-                <div id="history-list" class="space-y-3">
-                    <!-- Transaction history will be injected here -->
-                </div>
-                <p id="no-history-message" class="text-gray-500 italic mt-4">No recent transactions recorded.</p>
-            </div>
-        </section>
-
-        <!-- 4. Profile Section -->
-        <section id="profile-section" class="page-section">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Your Profile & Connection</h2>
-
-            <div class="max-w-xl mx-auto p-8 border border-black rounded-xl shadow-lg">
-                <h3 class="text-2xl font-semibold mb-4 flex items-center">
-                    <i class="ph ph-twitter-logo text-3xl mr-3"></i> Social Profile Connection
-                </h3>
-                
-                <div id="twitter-connection-status" class="p-4 rounded-lg border-2 border-dashed border-gray-400">
-                    <p class="font-medium">Status: <span id="twitter-status-text" class="text-red-600 font-bold">Disconnected</span></p>
-                    <p class="text-sm mt-1 text-gray-600">Your social handle is used to verify task completion and process payouts securely.</p>
-                </div>
-
-                <div class="mt-6 space-y-4">
-                    <label for="twitter-handle" class="block font-medium">Your Twitter Handle (without @)</label>
-                    <input type="text" id="twitter-handle" placeholder="arena_user123" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                    <button onclick="connectTwitter()" class="w-full bg-black text-white p-3 rounded-lg border border-black transition-colors hover:bg-gray-800 font-medium">
-                        Connect/Update Social Handle
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 5. Create Task Section -->
-        <section id="create-section" class="page-section">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">Create New Engagement Task</h2>
-            <p class="mb-4 text-gray-700">You will pay the total budget in **$eARENA** from your platform balance.</p>
-
-            <form id="create-task-form" class="max-w-xl mx-auto p-8 border border-black rounded-xl shadow-lg space-y-6">
-                
-                <div>
-                    <label for="post-url" class="block font-medium mb-2">Social Post URL (Twitter/X)</label>
-                    <input type="url" id="post-url" required placeholder="https://x.com/username/status/123456789" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                </div>
-
-                <div>
-                    <label for="task-type" class="block font-medium mb-2">Engagement Type</label>
-                    <select id="task-type" required class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black">
-                        <option value="">Select Engagement Type</option>
-                        <option value="retweet">Retweet</option>
-                        <option value="comment">Comment</option>
-                        <option value="like">Like</option>
-                        <option value="quote">Quote Tweet</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label for="task-budget" class="block font-medium mb-2">Total $eARENA Budget</label>
-                    <input type="number" id="task-budget" required min="1" step="0.01" placeholder="Minimum 1 $eARENA" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                </div>
-                
-                <div>
-                    <label for="target-count" class="block font-medium mb-2">Target Engagement Count</label>
-                    <input type="number" id="target-count" required min="1" placeholder="e.g., 50 engagements" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                </div>
-                
-                <p id="reward-preview" class="text-sm text-gray-700 italic text-center">Reward per engagement: 0.00 $eARENA</p>
-
-                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
-                    Fund & Create Task
-                </button>
-            </form>
-        </section>
-        
-        <!-- 6. About Arena Section -->
-        <section id="about-section" class="page-section">
-            <h2 class="text-3xl font-extrabold mb-8 border-b pb-3 border-black">About Arena.Social</h2>
-            
-            <div class="max-w-3xl mx-auto space-y-6 text-lg">
-                <p><strong>Arena.Social</strong> is a decentralized engagement marketplace built on the Avalanche ecosystem. We connect content creators who need genuine social interaction with active community members who are willing to perform high-quality engagement for rewards.</p>
-                
-                <h3 class="text-xl font-bold pt-4">Dual Token Economy: $ARENA and $eARENA</h3>
-                <ul class="list-disc list-inside space-y-2 pl-4">
-                    <li><strong>$ARENA (Real Token):</strong> This is the governance and primary utility token on the Avalanche chain. Its live price is fetched dynamically.</li>
-                    <li><strong>$eARENA (Ecosystem Token):</strong> This is the internal, secure token used for all transactions within the platform (funding tasks, rewarding users). Users **must first send $ARENA** to the official Treasury Wallet: <code class="text-sm bg-gray-100 p-1 rounded-md break-all">0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310</code>. We verify the transaction hash (TxID) to issue $eARENA, ensuring token safety. Users can claim their $eARENA back to $ARENA weekly.</li>
-                </ul>
-
-                <h3 class="text-xl font-bold pt-4">Quality Control & Verification</h3>
-                <p>To ensure creators receive the best results, every task requires **manual approval** by the creator. When a user submits a proof (like a comment link), the task creator must verify the quality and legitimacy of the action in the **Approvals** dashboard before the payout is triggered. This puts the creator in charge of ensuring high-quality engagement. If the creator does not approve within a set time period (2 days in our system), the proof is automatically approved, ensuring timely payment to the engager.</p>
-            </div>
-        </section>
-
-
-        <!-- Global Message Box (used instead of alert/confirm) -->
-        <div id="message-box" class="fixed bottom-4 right-4 z-50 p-4 bg-black text-white rounded-lg shadow-xl hidden transition-all duration-300"></div>
-
-    </main>
-
-    <!-- Proof Submission Modal -->
-    <div id="proof-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 invisible opacity-0">
-        <div class="bg-white p-8 border border-black rounded-xl max-w-lg w-full m-4 relative shadow-2xl">
-            <button id="close-proof-modal" class="absolute top-4 right-4 text-black hover:text-gray-700 p-2"><i class="ph ph-x-circle text-2xl"></i></button>
-            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Submit Engagement Proof</h3>
-            
-            <div class="text-sm space-y-1 mb-4">
-                <p class="font-semibold">Task:</p>
-                <p id="modal-task-details" class="truncate italic"></p>
-                <p class="font-semibold mt-2">Reward:</p>
-                <p id="modal-task-reward" class="text-xl font-bold text-black"></p>
-            </div>
-
-            <form id="proof-submission-form" class="space-y-4">
-                <input type="hidden" id="modal-task-id">
-                <label for="proof-url" class="block font-medium">Link to your post (Retweet/Comment URL)</label>
-                <input type="url" id="proof-url" required placeholder="https://x.com/yourhandle/status/..." class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                
-                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
-                    Submit Proof for Review
-                </button>
-            </form>
-        </div>
+  <div class="stats-row" id="market-stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Listings</div>
+      <div class="stat-value" id="stat-total-listings">—</div>
+      <div class="stat-sub" id="stat-listing-sub">fetching...</div>
     </div>
-    
-    <!-- Deposit Verification Modal (New) -->
-    <div id="deposit-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 invisible opacity-0">
-        <div class="bg-white p-8 border border-black rounded-xl max-w-lg w-full m-4 relative shadow-2xl">
-            <button id="close-deposit-modal" class="absolute top-4 right-4 text-black hover:text-gray-700 p-2"><i class="ph ph-x-circle text-2xl"></i></button>
-            <h3 class="text-2xl font-bold mb-4 border-b pb-2 border-black">Buy $eARENA - Transaction Verification</h3>
-            
-            <div class="bg-yellow-50 border border-yellow-500 p-4 rounded-lg mb-4 text-sm">
-                <p class="font-bold text-yellow-800 flex items-center mb-2"><i class="ph ph-warning-circle text-lg mr-2"></i> ACTION REQUIRED: External Transfer</p>
-                <p class="text-yellow-800">Please send your $ARENA tokens (on Avalanche C-Chain) to the official treasury address below **before** submitting this form.</p>
-            </div>
-            
-            <p class="font-medium mb-1">Official Treasury Wallet:</p>
-            <code class="block bg-gray-100 p-3 rounded-lg text-sm break-all mb-4" id="treasury-wallet">0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310</code>
-
-            <form id="deposit-verification-form" class="space-y-4">
-                <div>
-                    <label for="deposit-amount" class="block font-medium mb-2">Amount of $ARENA Sent</label>
-                    <input type="number" id="deposit-amount" required min="1" step="0.01" placeholder="e.g., 500 ARENA" class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                </div>
-                <div>
-                    <label for="deposit-txid" class="block font-medium mb-2">Transaction Hash (TxID)</label>
-                    <input type="text" id="deposit-txid" required placeholder="0x..." class="w-full p-3 border border-black rounded-lg focus:ring-0 focus:border-black placeholder-gray-400">
-                </div>
-                
-                <p id="deposit-conversion-rate" class="text-sm text-gray-700 italic text-center">Conversion: 1 $ARENA = 1 $eARENA</p>
-
-                <button type="submit" class="w-full bg-black text-white p-4 rounded-lg border border-black transition-colors hover:bg-gray-800 font-bold uppercase tracking-wider flex items-center justify-center">
-                    Submit TxID for Verification
-                </button>
-            </form>
-        </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg. Deal Quality</div>
+      <div class="stat-value green" id="stat-avg-deal">—</div>
+      <div class="stat-sub">vs baseline price</div>
     </div>
-    
-    <!-- Firebase SDKs -->
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, addDoc, updateDoc, increment, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Set Firebase logging level
-        setLogLevel('Debug');
-
-        // Global Variables and Constants
-        const EARENA_CONVERSION_RATE = 1.0; // 1 ARENA = 1 eARENA (Fixed for security)
-        const ARENA_TREASURY_WALLET = '0xED0e6b41B09168fFB9c5f562C0AB47FB37D84310';
-        const GEMINI_MODEL = 'gemini-2.5-flash-preview-05-20';
-        let db, auth, userId = 'guest_user';
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-
-        // Application State
-        let currentEarenaBalance = 0;
-        let twitterHandle = null;
-        let availableTasks = [];
-        let myCreatedTasks = [];
-        let proofsToReview = [];
-        let arenaPrice = 0.00;
-        let isAuthReady = false;
-
-        // --- Utility Functions ---
-        
-        /** Shows a custom message box instead of using alert() */
-        function showMessage(message, type = 'info') {
-            const box = document.getElementById('message-box');
-            box.textContent = message;
-            box.className = `fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-xl transition-all duration-300 ${type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-black'} text-white`;
-            box.style.display = 'block';
-            setTimeout(() => {
-                box.style.display = 'none';
-            }, 4000);
-        }
-        
-        /** Converts number to 2 decimal string */
-        function formatArena(amount) {
-            return (amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        }
-        
-        /** Handles exponential backoff for API calls */
-        async function fetchWithBackoff(url, options, maxRetries = 5) {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        // Throw error to trigger retry for transient issues (like rate limiting)
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response;
-                } catch (error) {
-                    if (i === maxRetries - 1) {
-                        throw error;
-                    }
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
-        
-        /** Fetches the real, live $ARENA price using the Gemini API and Google Search */
-        async function fetchArenaPrice() {
-            const priceValueElement = document.getElementById('price-value');
-            const priceLoaderElement = document.getElementById('price-loader');
-            priceValueElement.textContent = '$Loading...';
-            priceLoaderElement.classList.remove('hidden');
-
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-            const userQuery = "What is the current live price of $ARENA token (Avalanche C-Chain 0x3c5f68d2f72debba4900c60f32eb8629876401f2) in USD?";
-            
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                tools: [{ "google_search": {} }],
-                systemInstruction: { parts: [{ text: "You are a specialized financial data parser. Extract the current price of the requested cryptocurrency in USD as a plain number rounded to 4 decimal places. If you cannot find the price, return 0.0000." }] }
-            };
-
-            try {
-                const response = await fetchWithBackoff(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const result = await response.json();
-                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '0.0000';
-                
-                // Attempt to parse the number
-                let parsedPrice = parseFloat(text.replace(/[^0-9.]/g, ''));
-                if (isNaN(parsedPrice) || parsedPrice <= 0) {
-                     // Fallback to a default/last known price if the parser fails
-                     parsedPrice = 0.006603; 
-                }
-                arenaPrice = parsedPrice;
-                priceValueElement.textContent = `$${arenaPrice.toFixed(4)}`;
-                
-            } catch (error) {
-                console.error("Failed to fetch live price:", error);
-                // Display last known value on error
-                arenaPrice = 0.006603; 
-                priceValueElement.textContent = `$${arenaPrice.toFixed(4)} (Stale)`;
-            } finally {
-                priceLoaderElement.classList.add('hidden');
-            }
-        }
-
-
-        // --- Firestore Paths ---
-
-        /** Gets the document reference for the user's private wallet/profile data. */
-        const getUserProfileRef = (uid) => {
-            return doc(db, `artifacts/${appId}/users/${uid}/profile`, 'wallet_data');
-        };
-
-        /** Gets the document reference for a public task. */
-        const getTaskDocRef = (taskId) => {
-            return doc(db, `artifacts/${appId}/public/data/tasks`, taskId);
-        };
-
-        /** Gets the collection reference for public tasks. */
-        const getTasksCollectionRef = () => {
-            return collection(db, `artifacts/${appId}/public/data/tasks`);
-        };
-
-        /** Gets the document reference for a specific user's proof on a task. */
-        const getUserProofDocRef = (taskId, uid) => {
-            return doc(db, `artifacts/${appId}/public/data/tasks/${taskId}/proofs`, uid);
-        };
-        
-        /** Gets the collection reference for a specific user's transaction history. */
-        const getHistoryCollectionRef = (uid) => {
-            return collection(db, `artifacts/${appId}/users/${uid}/history`);
-        };
-
-
-        // --- Authentication and Initialization ---
-        
-        async function initializeAppAndAuth() {
-            try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    throw new Error("Firebase configuration is missing.");
-                }
-
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // Fetch price immediately and set up an interval
-                fetchArenaPrice();
-                setInterval(fetchArenaPrice, 60000); // Update price every minute
-
-                // Set up Auth State Listener
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                    } else {
-                        try {
-                            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                            userId = auth.currentUser.uid;
-                        } catch (error) {
-                            console.error("Anonymous sign-in failed:", error);
-                            userId = 'anonymous-error';
-                        }
-                    }
-
-                    document.getElementById('user-id-display').textContent = userId;
-                    isAuthReady = true;
-                    setupRealtimeListeners();
-                });
-
-            } catch (error) {
-                console.error("Failed to initialize Firebase:", error);
-                showMessage(`Initialization error: ${error.message}`, 'error');
-            }
-        }
-
-        // --- Realtime Data Listeners ---
-
-        function setupRealtimeListeners() {
-            if (!isAuthReady || !db) return;
-
-            // 1. Listen to User Profile/Wallet Data (Private)
-            const userDocRef = getUserProfileRef(userId);
-            onSnapshot(userDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    currentEarenaBalance = data.balance || 0;
-                    twitterHandle = data.twitterHandle || null;
-                    
-                    updateWalletUI();
-                    updateProfileUI();
-                } else {
-                    // Initialize profile if it doesn't exist 
-                    setDoc(userDocRef, { balance: 0.00, twitterHandle: null, userId: userId }); 
-                    currentEarenaBalance = 0.00;
-                    updateWalletUI();
-                }
-            }, (error) => {
-                console.error("Error listening to user profile:", error);
-                showMessage("Could not sync wallet data.", 'error');
-            });
-
-
-            // 2. Listen to User's Transaction History (Private)
-             const historyRef = getHistoryCollectionRef(userId);
-             onSnapshot(query(historyRef), (snapshot) => {
-                 const history = [];
-                 snapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
-                 renderHistory(history);
-             }, (error) => {
-                 console.error("Error listening to history:", error);
-             });
-            
-            // 3. Listen to Public Tasks Data
-            const tasksRef = getTasksCollectionRef();
-            const allTasksQuery = query(tasksRef);
-            onSnapshot(allTasksQuery, async (snapshot) => {
-                availableTasks = [];
-                myCreatedTasks = [];
-                let totalLockedEarena = 0;
-                
-                snapshot.forEach((doc) => {
-                    const task = { id: doc.id, ...doc.data() };
-                    availableTasks.push(task);
-                    totalLockedEarena += task.totalBudget || 0;
-                    if (task.creatorId === userId) {
-                         myCreatedTasks.push(task);
-                    }
-                });
-                
-                updateTasksUI(totalLockedEarena);
-                await fetchProofsForReview(); // Now fetch proofs for *my* created tasks
-            }, (error) => {
-                console.error("Error listening to tasks:", error);
-                showMessage("Could not sync public tasks.", 'error');
-            });
-        }
-        
-        /** Fetches all proofs submitted against the current user's created tasks */
-        async function fetchProofsForReview() {
-            if (!myCreatedTasks.length) {
-                proofsToReview = [];
-                renderApprovalSection();
-                return;
-            }
-            
-            proofsToReview = [];
-            
-            // Iterate over all tasks the user created
-            for (const task of myCreatedTasks) {
-                const proofsRef = collection(db, `artifacts/${appId}/public/data/tasks/${task.id}/proofs`);
-                // Query for proofs that are 'pending'
-                const q = query(proofsRef, where("status", "==", "pending"));
-                
-                const querySnapshot = await getDocs(q);
-                
-                querySnapshot.forEach(doc => {
-                    const proof = doc.data();
-                    proofsToReview.push({
-                        proofId: doc.id, // This is the userId of the engager
-                        taskId: task.id,
-                        taskType: task.type,
-                        reward: task.rewardPerEngagement,
-                        ...proof,
-                        taskPostUrl: task.postUrl,
-                    });
-                });
-            }
-            // Check for auto-approvals
-            processAutoApprovals();
-            renderApprovalSection();
-        }
-        
-        /** Checks for proofs overdue for manual approval and auto-approves them. */
-        async function processAutoApprovals() {
-            const TWO_DAYS_MS = 172800000;
-            const now = Date.now();
-            
-            const autoApprovedIds = [];
-
-            for (const proof of proofsToReview) {
-                if (now > (proof.submittedAt + TWO_DAYS_MS)) {
-                    // Proof is overdue, auto-approve it
-                    await autoApproveProof(proof);
-                    autoApprovedIds.push(proof.proofId);
-                }
-            }
-            
-            // Filter out any proofs that were just auto-approved
-            proofsToReview = proofsToReview.filter(proof => !autoApprovedIds.includes(proof.proofId));
-        }
-        
-        /** Helper function to execute auto-approval logic (similar to manual approve) */
-        async function autoApproveProof(proof) {
-            const proofDocRef = getUserProofDocRef(proof.taskId, proof.proofId);
-            const taskDocRef = getTaskDocRef(proof.taskId);
-            const userWalletRef = getUserProfileRef(proof.proofId);
-            
-            try {
-                // Fetch task data to get reward amount (needed since the main array might not have it)
-                const taskSnap = await getDoc(taskDocRef);
-                const task = taskSnap.data();
-                const rewardAmount = task.rewardPerEngagement;
-
-                // 1. Mark Proof as Auto-Approved
-                await updateDoc(proofDocRef, {
-                    status: 'auto_approved',
-                    approvedBy: 'SYSTEM (Auto-Approval)',
-                    approvedAt: Date.now()
-                });
-
-                // 2. Update Task Progress
-                await updateDoc(taskDocRef, {
-                    completedCount: increment(1),
-                    totalBudget: increment(-rewardAmount)
-                });
-                
-                // 3. Pay the User
-                await updateDoc(userWalletRef, {
-                    balance: increment(rewardAmount)
-                });
-                
-                // 4. Update engaging user's history
-                await addDoc(getHistoryCollectionRef(proof.proofId), {
-                    type: 'Task Payout (Auto-Approved)',
-                    amount: rewardAmount,
-                    status: 'approved',
-                    timestamp: Date.now()
-                });
-                
-                showMessage(`Auto-Approved proof for @${proof.twitterHandle}. Payout processed.`, 'success');
-
-            } catch (error) {
-                console.error("Auto-Approval failed for proof:", proof.proofId, error);
-            }
-        }
-
-
-        // --- UI Update Functions ---
-
-        function updateWalletUI() {
-            document.getElementById('wallet-balance-display-dashboard').textContent = formatArena(currentEarenaBalance);
-            document.getElementById('wallet-balance-display-wallet').textContent = formatArena(currentEarenaBalance);
-        }
-
-        function updateProfileUI() {
-            const statusText = document.getElementById('twitter-status-text');
-            const handleInput = document.getElementById('twitter-handle');
-            
-            if (twitterHandle) {
-                statusText.textContent = `Connected as @${twitterHandle}`;
-                statusText.classList.remove('text-red-600');
-                statusText.classList.add('text-green-600');
-                handleInput.value = twitterHandle;
-            } else {
-                statusText.textContent = 'Disconnected';
-                statusText.classList.remove('text-green-600');
-                statusText.classList.add('text-red-600');
-                handleInput.value = '';
-            }
-        }
-
-        function updateTasksUI(totalLockedEarena) {
-            const listContainer = document.getElementById('tasks-list');
-            listContainer.innerHTML = '';
-            
-            document.getElementById('total-tasks-count').textContent = availableTasks.length;
-            document.getElementById('total-tasks-arena-value').textContent = formatArena(totalLockedEarena);
-            document.getElementById('no-tasks-message').style.display = availableTasks.length === 0 ? 'block' : 'none';
-
-            availableTasks.forEach(task => {
-                const required = task.targetCount - (task.completedCount || 0);
-                // Only show tasks that are not yet complete
-                if (required <= 0) return; 
-
-                const taskCard = document.createElement('div');
-                
-                const taskTypeIcon = {
-                    retweet: '<i class="ph ph-arrows-counter-clockwise text-xl text-black"></i>',
-                    comment: '<i class="ph ph-chat-circle-text text-xl text-black"></i>',
-                    like: '<i class="ph ph-heart text-xl text-black"></i>',
-                    quote: '<i class="ph ph-chat-text text-xl text-black"></i>'
-                }[task.type] || '<i class="ph ph-activity text-xl text-black"></i>';
-
-                const progress = ((task.completedCount || 0) / task.targetCount) * 100;
-                const reward = formatArena(task.rewardPerEngagement || 0);
-                
-                taskCard.className = 'p-5 border border-black rounded-xl shadow-md transition-shadow hover:shadow-lg';
-                taskCard.innerHTML = `
-                    <div class="flex justify-between items-start mb-3 border-b pb-2 border-dashed border-gray-300">
-                        <div class="flex items-center">
-                            ${taskTypeIcon}
-                            <span class="ml-3 font-bold uppercase">${task.type} Request</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs font-semibold text-gray-700 block">Reward per:</span>
-                            <span class="text-xl font-extrabold text-black">${reward} $eARENA</span>
-                        </div>
-                    </div>
-                    <div class="text-sm space-y-2">
-                        <p class="truncate"><span class="font-semibold">Creator:</span> @${task.creatorHandle}</p>
-                        <p class="truncate"><span class="font-semibold">Post:</span> <a href="${task.postUrl}" target="_blank" class="underline hover:text-gray-600">${task.postUrl}</a></p>
-                        <p><span class="font-semibold">Goal:</span> ${task.targetCount} ${task.type}s</p>
-                        <p><span class="font-semibold">Remaining:</span> <span class="${required > 0 ? 'text-red-600' : 'text-green-600'}">${required}</span></p>
-                        <div class="w-full h-2 bg-gray-200 rounded-full mt-3">
-                            <div class="h-2 bg-black rounded-full" style="width: ${progress.toFixed(0)}%"></div>
-                        </div>
-                        <p class="text-xs text-right text-gray-700">${progress.toFixed(1)}% complete (Total Budget: ${formatArena(task.totalBudget)})</p>
-                    </div>
-                    <button data-task-id="${task.id}" 
-                            data-task-type="${task.type}"
-                            data-task-reward="${reward}"
-                            data-task-url="${task.postUrl}"
-                            class="engage-button mt-4 w-full bg-black text-white p-3 rounded-lg border border-black transition-colors hover:bg-gray-800 font-medium">
-                        Engage & Submit Proof
-                    </button>
-                `;
-                listContainer.appendChild(taskCard);
-            });
-
-            document.querySelectorAll('.engage-button').forEach(button => {
-                button.onclick = (e) => handleTaskEngagement(e.target.dataset);
-            });
-        }
-        
-        function renderApprovalSection() {
-            const listContainer = document.getElementById('approvals-list');
-            listContainer.innerHTML = '';
-            
-            document.getElementById('no-pending-proofs').classList.toggle('hidden', proofsToReview.length > 0);
-
-            proofsToReview.forEach(proof => {
-                const proofCard = document.createElement('div');
-                
-                const TWO_DAYS_MS = 172800000;
-                const submissionTime = proof.submittedAt || 0;
-                const deadline = submissionTime + TWO_DAYS_MS;
-                const isOverdue = Date.now() > deadline;
-                const overdueMessage = isOverdue ? '<span class="text-red-600 font-bold ml-2">(Auto-Approval Due!)</span>' : '';
-                const timeAgo = (new Date(submissionTime)).toLocaleDateString();
-
-                proofCard.className = 'p-5 border border-black rounded-xl shadow-md bg-gray-50';
-                proofCard.innerHTML = `
-                    <div class="flex justify-between items-center mb-3 border-b pb-3 border-dashed border-gray-300">
-                        <h4 class="font-bold text-lg">${proof.taskType.toUpperCase()} Proof for Task ID: ${proof.taskId.substring(0, 8)}...</h4>
-                        <span class="text-xl font-extrabold text-black">+${formatArena(proof.reward)} $eARENA</span>
-                    </div>
-                    <div class="text-sm space-y-2 mb-4">
-                        <p><span class="font-semibold">Engager:</span> @${proof.twitterHandle} (User ID: ${proof.proofId.substring(0, 10)}...)</p>
-                        <p><span class="font-semibold">Submitted:</span> ${timeAgo}${overdueMessage}</p>
-                        <p><span class="font-semibold">Proof Link:</span> <a href="${proof.proofUrl}" target="_blank" class="underline hover:text-blue-600 break-all">${proof.proofUrl}</a></p>
-                        <p><span class="font-semibold">Original Post:</span> <a href="${proof.taskPostUrl}" target="_blank" class="underline hover:text-blue-600 break-all">${proof.taskPostUrl}</a></p>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button data-task-id="${proof.taskId}" data-proof-id="${proof.proofId}" onclick="approveProof(this.dataset)" class="flex-1 bg-green-600 text-white p-3 rounded-lg transition-colors hover:bg-green-700 font-medium">
-                            <i class="ph ph-check text-xl mr-2"></i> Approve & Pay
-                        </button>
-                        <button data-task-id="${proof.taskId}" data-proof-id="${proof.proofId}" onclick="rejectProof(this.dataset)" class="flex-1 bg-red-600 text-white p-3 rounded-lg transition-colors hover:bg-red-700 font-medium">
-                            <i class="ph ph-x text-xl mr-2"></i> Reject
-                        </button>
-                    </div>
-                `;
-                listContainer.appendChild(proofCard);
-            });
-        }
-        
-        function renderHistory(history) {
-            const listContainer = document.getElementById('history-list');
-            listContainer.innerHTML = '';
-            
-            history.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // Sort by newest first
-            
-            document.getElementById('no-history-message').classList.toggle('hidden', history.length > 0);
-            
-            history.forEach(item => {
-                const isDebit = item.amount < 0 || item.type.includes('(Outlay)') || item.type.includes('Claim');
-                const color = isDebit ? 'text-red-600' : 'text-green-600';
-                const sign = isDebit ? '-' : '+';
-                
-                const historyItem = document.createElement('div');
-                historyItem.className = 'flex justify-between items-center p-3 border border-gray-200 rounded-lg';
-                
-                let statusBadge = '';
-                if (item.status) {
-                     let statusColor, statusText;
-                     if (item.status === 'approved' || item.status === 'auto_approved') {
-                        statusColor = 'bg-green-100 text-green-800';
-                        statusText = item.status === 'auto_approved' ? 'AUTO-APPROVED' : 'APPROVED';
-                     } else if (item.status === 'pending') {
-                         statusColor = 'bg-yellow-100 text-yellow-800';
-                         statusText = 'PENDING CREATOR REVIEW';
-                     } else if (item.status === 'tx_pending_verification') {
-                         statusColor = 'bg-blue-100 text-blue-800';
-                         statusText = 'TX VERIFICATION PENDING';
-                     } else {
-                         statusColor = 'bg-red-100 text-red-800';
-                         statusText = 'REJECTED';
-                     }
-                     statusBadge = `<span class="text-xs uppercase font-bold p-1 rounded ${statusColor}">${statusText}</span>`;
-                }
-                
-                historyItem.innerHTML = `
-                    <div>
-                        <p class="font-medium">${item.type}</p>
-                        ${statusBadge}
-                        <p class="text-xs text-gray-500 mt-1">${new Date(item.timestamp || item.submittedAt).toLocaleDateString()} ${new Date(item.timestamp || item.submittedAt).toLocaleTimeString()}</p>
-                    </div>
-                    <div class="font-bold ${color}">
-                        ${sign}${formatArena(Math.abs(item.amount))} $eARENA
-                    </div>
-                `;
-                listContainer.appendChild(historyItem);
-            });
-        }
-
-
-        // --- Modals and UI State Changes ---
-
-        function openModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('invisible', 'opacity-0');
-            modal.classList.add('visible', 'opacity-100');
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('visible', 'opacity-100');
-            modal.classList.add('invisible', 'opacity-0');
-            // Reset forms upon closing
-            if(modalId === 'proof-modal') document.getElementById('proof-submission-form').reset();
-            if(modalId === 'deposit-modal') document.getElementById('deposit-verification-form').reset();
-        }
-        
-        // Proof Modal Handlers
-        function handleTaskEngagement(taskData) {
-            if (!twitterHandle) {
-                showMessage("Please connect your social handle on the Profile page first.", 'error');
-                return;
-            }
-            document.getElementById('modal-task-id').value = taskData.taskId;
-            document.getElementById('modal-task-details').innerHTML = `<span class="font-medium uppercase">${taskData.taskType}</span> on post: <a href="${taskData.taskUrl}" target="_blank" class="underline">${taskData.taskUrl.substring(0, 30)}...</a>`;
-            document.getElementById('modal-task-reward').textContent = `${taskData.taskReward} $eARENA`;
-            openModal('proof-modal');
-        }
-        document.getElementById('close-proof-modal').addEventListener('click', () => closeModal('proof-modal'));
-
-        document.getElementById('proof-submission-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const taskId = document.getElementById('modal-task-id').value;
-            const proofUrl = document.getElementById('proof-url').value;
-            if (!proofUrl.startsWith('http')) { showMessage("Please provide a valid link to your engagement post.", 'error'); return; }
-            await submitProof(taskId, proofUrl);
-            closeModal('proof-modal');
-        });
-        
-        // Deposit Modal Handlers
-        function openDepositModal() {
-             openModal('deposit-modal');
-        }
-        document.getElementById('close-deposit-modal').addEventListener('click', () => closeModal('deposit-modal'));
-
-        document.getElementById('deposit-verification-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const amountSent = parseFloat(document.getElementById('deposit-amount').value);
-            const txId = document.getElementById('deposit-txid').value.trim();
-            if (txId.length < 10 || txId.includes(' ')) {
-                showMessage("Please provide a valid transaction hash (TxID).", 'error');
-                return;
-            }
-            if (amountSent <= 0) {
-                 showMessage("Amount sent must be greater than zero.", 'error');
-                 return;
-            }
-            
-            await submitDepositVerification(amountSent, txId);
-            closeModal('deposit-modal');
-        });
-
-
-        // --- Core Interaction Handlers (Dapp Logic) ---
-        
-        /** Submits proof to the task creator for manual review/approval */
-        async function submitProof(taskId, proofUrl) {
-            const userProofRef = getUserProofDocRef(taskId, userId);
-            const proofSnap = await getDoc(userProofRef);
-
-            if (proofSnap.exists()) { showMessage("You have already submitted proof for this task. Check History for status.", 'error'); return; }
-            
-            const taskDocRef = getTaskDocRef(taskId);
-            const taskSnap = await getDoc(taskDocRef);
-            if (!taskSnap.exists()) { showMessage("Error: Task not found.", 'error'); return; }
-            const task = taskSnap.data();
-            const rewardAmount = task.rewardPerEngagement;
-
-            try {
-                await setDoc(userProofRef, {
-                    userId: userId,
-                    twitterHandle: twitterHandle,
-                    proofUrl: proofUrl,
-                    submittedAt: Date.now(),
-                    status: 'pending', // Requires creator approval
-                    taskType: task.type,
-                    taskId: taskId,
-                    amount: rewardAmount
-                });
-                
-                await addDoc(getHistoryCollectionRef(userId), {
-                    type: 'Task Payout (Submitted)',
-                    amount: rewardAmount,
-                    status: 'pending',
-                    timestamp: Date.now()
-                });
-
-                showMessage(`Proof submitted! Awaiting creator approval for ${formatArena(rewardAmount)} $eARENA.`, 'info');
-
-            } catch (error) {
-                console.error("Proof submission failed:", error);
-                showMessage("Submission failed. Please try again later.", 'error');
-            }
-        }
-        
-        /** Handles the user submitting the external transaction hash for verification */
-        async function submitDepositVerification(arenaAmount, txId) {
-            const earenaReceived = arenaAmount * EARENA_CONVERSION_RATE;
-            
-            try {
-                // Record the pending deposit verification in the user's history
-                await addDoc(getHistoryCollectionRef(userId), {
-                    type: 'Deposit ($ARENA to $eARENA)',
-                    amount: earenaReceived,
-                    txId: txId,
-                    status: 'tx_pending_verification',
-                    timestamp: Date.now()
-                });
-
-                // In a real application, an admin system would now check the Avalanche chain for this TxID.
-                // For this exercise, we will simulate the verification success after a delay.
-                
-                // --- Simulation of Admin Verification (Simulate success) ---
-                showMessage("TxID submitted. Verification in progress (20s). Do not close the tab.", 'info');
-                
-                await new Promise(resolve => setTimeout(resolve, 20000)); // 20 second simulation delay
-
-                const userDocRef = getUserProfileRef(userId);
-                await updateDoc(userDocRef, { balance: increment(earenaReceived) }); 
-                
-                // Update history status (simulating an admin updating the doc directly)
-                // Note: We cannot update the doc directly without its ID, so we add a final 'Credit' entry.
-                 await addDoc(getHistoryCollectionRef(userId), {
-                    type: 'Deposit Confirmed (Credit)',
-                    amount: earenaReceived,
-                    status: 'approved',
-                    timestamp: Date.now() + 1 // Ensure it sorts after the pending entry
-                });
-
-
-                showMessage(`Success! ${formatArena(arenaAmount)} $ARENA converted to ${formatArena(earenaReceived)} $eARENA. Balance credited.`, 'success');
-                // --- End Simulation ---
-
-            } catch (error) {
-                console.error("Deposit verification failed:", error);
-                showMessage("Deposit verification failed. Please try again later.", 'error');
-            }
-        }
-        
-        // Function called by the creator to APPROVE a pending proof
-        async function approveProof({ taskId, proofId }) {
-            const proofDocRef = getUserProofDocRef(taskId, proofId);
-            const taskDocRef = getTaskDocRef(taskId);
-            const userWalletRef = getUserProfileRef(proofId); // Wallet of the engaging user
-            
-            try {
-                const proofSnap = await getDoc(proofDocRef);
-                const taskSnap = await getDoc(taskDocRef);
-                
-                if (!proofSnap.exists() || !taskSnap.exists()) { showMessage("Approval failed: Proof or Task not found.", 'error'); return; }
-
-                const task = taskSnap.data();
-                const rewardAmount = task.rewardPerEngagement;
-                
-                // 1. Mark Proof as Approved
-                await updateDoc(proofDocRef, { status: 'approved', approvedBy: userId, approvedAt: Date.now() });
-                
-                // 2. Update Task Progress
-                await updateDoc(taskDocRef, { completedCount: increment(1), totalBudget: increment(-rewardAmount) });
-                
-                // 3. Pay the User
-                await updateDoc(userWalletRef, { balance: increment(rewardAmount) });
-                
-                // 4. Update engaging user's history
-                await addDoc(getHistoryCollectionRef(proofId), {
-                    type: 'Task Payout (Approved)', amount: rewardAmount, status: 'approved', timestamp: Date.now()
-                });
-
-                showMessage(`Approved @${proofSnap.data().twitterHandle}. ${formatArena(rewardAmount)} $eARENA paid.`, 'success');
-                await fetchProofsForReview(); // Re-fetch proofs
-
-            } catch (error) {
-                console.error("Approval failed:", error);
-                showMessage("Approval transaction failed.", 'error');
-            }
-        }
-        
-        // Function called by the creator to REJECT a pending proof
-        async function rejectProof({ taskId, proofId }) {
-            const proofDocRef = getUserProofDocRef(taskId, proofId);
-            
-            try {
-                const proofSnap = await getDoc(proofDocRef);
-                if (!proofSnap.exists()) { showMessage("Rejection failed: Proof not found.", 'error'); return; }
-
-                // 1. Mark Proof as Rejected
-                await updateDoc(proofDocRef, { status: 'rejected', rejectedBy: userId, rejectedAt: Date.now() });
-                
-                // 2. Update engaging user's history
-                 await addDoc(getHistoryCollectionRef(proofId), {
-                    type: 'Task Payout (Rejected)', amount: proofSnap.data().amount, status: 'rejected', timestamp: Date.now()
-                });
-                
-                showMessage(`Rejected proof from @${proofSnap.data().twitterHandle}. The user can submit a new proof.`, 'info');
-                await fetchProofsForReview(); // Re-fetch proofs
-
-            } catch (error) {
-                console.error("Rejection failed:", error);
-                showMessage("Rejection transaction failed.", 'error');
-            }
-        }
-
-
-        async function connectTwitter() {
-            const handleInput = document.getElementById('twitter-handle').value.trim();
-            if (!handleInput) { showMessage("Please enter a valid social handle.", 'error'); return; }
-            
-            try {
-                const userDocRef = getUserProfileRef(userId);
-                await setDoc(userDocRef, { twitterHandle: handleInput }, { merge: true });
-                showMessage(`Social handle connected as @${handleInput}.`, 'info');
-            } catch (error) {
-                console.error("Failed to update social handle:", error);
-                showMessage("Failed to connect handle. Please try again.", 'error');
-            }
-        }
-
-        async function claimArena() {
-            const CLAIM_AMOUNT_MAX = 50.00; // Example weekly claim limit
-            const claimAmount = Math.min(CLAIM_AMOUNT_MAX, currentEarenaBalance);
-            
-            if (claimAmount < 1.00) {
-                 showMessage("Insufficient $eARENA balance or amount too low for processing. Minimum claim is 1.00 $eARENA.", 'error');
-                 return;
-            }
-
-            try {
-                const userDocRef = getUserProfileRef(userId);
-                // Deduct $eARENA from platform balance
-                await updateDoc(userDocRef, { balance: increment(-claimAmount) });
-                
-                // This simulates sending the real $ARENA to the user's connected wallet (via auth/profile data)
-                
-                await addDoc(getHistoryCollectionRef(userId), {
-                    type: 'Claim ($eARENA to $ARENA)',
-                    amount: -claimAmount,
-                    status: 'approved', // Assuming automated payout
-                    timestamp: Date.now()
-                });
-                
-                showMessage(`Successfully processed claim of ${formatArena(claimAmount)} $eARENA. Check your external wallet for $ARENA in a few minutes.`, 'success');
-            } catch (error) {
-                console.error("Claim failed:", error);
-                showMessage("Claim transaction failed.", 'error');
-            }
-        }
-
-        // Event listener for Create Task Form
-        document.getElementById('create-task-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const postUrl = document.getElementById('post-url').value;
-            const taskType = document.getElementById('task-type').value;
-            const totalBudget = parseFloat(document.getElementById('task-budget').value);
-            const targetCount = parseInt(document.getElementById('target-count').value, 10);
-            const rewardPerEngagement = totalBudget / targetCount;
-
-
-            if (totalBudget > currentEarenaBalance) { showMessage("Task budget exceeds your current $eARENA balance. Please deposit funds.", 'error'); return; }
-            if (!twitterHandle) { showMessage("You must connect your social handle to create tasks.", 'error'); return; }
-            if (rewardPerEngagement <= 0) { showMessage("Invalid budget or target count. Reward per engagement must be positive.", 'error'); return; }
-
-            try {
-                // 1. Deduct funds from the user's wallet
-                const userDocRef = getUserProfileRef(userId);
-                await updateDoc(userDocRef, { balance: increment(-totalBudget) });
-
-                // 2. Add the new task to the public collection
-                const taskData = {
-                    postUrl: postUrl, type: taskType, totalBudget: totalBudget, targetCount: targetCount,
-                    rewardPerEngagement: rewardPerEngagement, completedCount: 0, creatorId: userId,
-                    creatorHandle: twitterHandle, createdAt: Date.now()
-                };
-                
-                await addDoc(getTasksCollectionRef(), taskData);
-                
-                // 3. Record history
-                await addDoc(getHistoryCollectionRef(userId), { type: 'Task Funded (Outlay)', amount: totalBudget, timestamp: Date.now() });
-                
-                showMessage(`Task created successfully! ${formatArena(totalBudget)} $eARENA locked.`, 'success');
-                
-                document.getElementById('create-task-form').reset();
-                navigateToSection('tasks-section'); 
-            } catch (error) {
-                console.error("Error creating task:", error);
-                showMessage("Failed to create task. Funds not deducted.", 'error');
-            }
-        });
-        
-        // Live reward calculation preview
-        document.getElementById('task-budget').addEventListener('input', updateRewardPreview);
-        document.getElementById('target-count').addEventListener('input', updateRewardPreview);
-        function updateRewardPreview() {
-             const budget = parseFloat(document.getElementById('task-budget').value) || 0;
-             const count = parseInt(document.getElementById('target-count').value, 10) || 1;
-             const reward = count > 0 ? budget / count : 0;
-             document.getElementById('reward-preview').textContent = `Reward per engagement: ${formatArena(reward)} $eARENA`;
-        }
-        updateRewardPreview(); // Initial call
-
-
-        // --- Navigation Logic ---
-        
-        const menuButton = document.getElementById('menu-button');
-        const navMenu = document.getElementById('nav-menu');
-        const navLinks = document.querySelectorAll('.nav-link');
-        const overlay = document.getElementById('overlay');
-        
-        function toggleMenu() {
-            const isOpen = navMenu.classList.contains('translate-x-0');
-            if (isOpen) {
-                navMenu.classList.remove('translate-x-0');
-                navMenu.classList.add('translate-x-full');
-                overlay.classList.remove('opacity-50');
-                overlay.classList.add('opacity-0');
-                overlay.classList.add('pointer-events-none');
-            } else {
-                navMenu.classList.remove('translate-x-full');
-                navMenu.classList.add('translate-x-0');
-                overlay.classList.remove('opacity-0');
-                overlay.classList.add('opacity-50');
-                overlay.classList.remove('pointer-events-none');
-            }
-        }
-
-        function navigateToSection(sectionId) {
-            document.querySelectorAll('.page-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            document.getElementById(sectionId).classList.add('active');
-            toggleMenu(); // Close menu after selection
-        }
-
-        menuButton.addEventListener('click', toggleMenu);
-        overlay.addEventListener('click', toggleMenu);
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const sectionId = e.currentTarget.getAttribute('data-section');
-                navigateToSection(sectionId);
-            });
-        });
-
-        // Initialize App on Load
-        window.onload = initializeAppAndAuth;
-
-        // Make functions globally available for inline HTML buttons
-        window.openDepositModal = openDepositModal;
-        window.claimArena = claimArena;
-        window.connectTwitter = connectTwitter;
-        window.navigateToSection = navigateToSection; 
-        window.approveProof = approveProof;
-        window.rejectProof = rejectProof;
-    </script>
+    <div class="stat-card">
+      <div class="stat-label">Best Deal Discount</div>
+      <div class="stat-value green" id="stat-best-deal">—</div>
+      <div class="stat-sub" id="stat-best-name">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg. Hashrate/hCASH</div>
+      <div class="stat-value cyan" id="stat-efficiency">—</div>
+      <div class="stat-sub">MH/s per hCASH listed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Elec Rate</div>
+      <div class="stat-value orange">8.88</div>
+      <div class="stat-sub">hCASH / kWh</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" class="search-input" id="market-search" placeholder="SEARCH MINER..." oninput="renderMarket()">
+    <button class="filter-btn active" onclick="setFilter('all')">ALL</button>
+    <button class="filter-btn" onclick="setFilter('deals')">DEALS ONLY</button>
+    <button class="filter-btn" onclick="setFilter('overpriced')">OVERPRICED</button>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadAll()">
+      <span class="spin-icon">↻</span> REFRESH
+    </button>
+  </div>
+
+  <div class="panel" style="padding:0;overflow:hidden;">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div id="market-table-wrap">
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">FETCHING LISTINGS...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MINERS PAGE -->
+<div id="page-miners" class="page">
+  <div class="section-title">MINER CATALOG</div>
+  <div class="toolbar">
+    <input type="text" class="search-input" id="miner-search" placeholder="SEARCH MINER..." oninput="renderMiners()">
+    <button class="filter-btn active" id="flt-all" onclick="setMinerFilter('all')">ALL</button>
+    <button class="filter-btn" id="flt-gpu" onclick="setMinerFilter('GPU')">GPU</button>
+    <button class="filter-btn" id="flt-asic" onclick="setMinerFilter('ASIC')">ASIC</button>
+    <button class="filter-btn" id="flt-cpu" onclick="setMinerFilter('CPU')">CPU</button>
+    <button class="filter-btn" id="flt-rig" onclick="setMinerFilter('Rig')">RIG</button>
+  </div>
+  <div class="panel" style="padding:0;overflow:hidden;">
+    <div id="miner-table-wrap">
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">LOADING CATALOG...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FACILITY BUILDER PAGE -->
+<div id="page-facility" class="page">
+  <div class="section-title">FACILITY BUILDER & PROFITABILITY</div>
+
+  <div class="panel" style="margin-bottom:12px;padding:14px 20px;">
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <div>
+        <div class="stat-label">ELECTRICITY RATE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--orange)">8.88 <span style="font-size:11px;color:var(--text2)">hCASH/kWh</span></div>
+      </div>
+      <div>
+        <div class="stat-label">NETWORK HASHRATE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--cyan)" id="fac-net-hash">—</div>
+      </div>
+      <div>
+        <div class="stat-label">DAILY EMISSION</div>
+        <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--yellow)" id="fac-daily-emit">~57,600 hCASH</div>
+      </div>
+      <div>
+        <div class="stat-label">hCASH PRICE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--green)" id="fac-hcash-price">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="facility-grid">
+    <!-- LEFT: Miner picker -->
+    <div>
+      <div class="panel-title">SELECT MINERS FOR YOUR FACILITY</div>
+      <div class="miner-select-grid" id="fac-miner-grid">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="result-panel">
+      <div class="corner-tl"></div>
+      <div class="corner-br"></div>
+      <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--text2);margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">FACILITY OVERVIEW</div>
+
+      <div class="elected-miners-list" id="elected-list">
+        <div style="color:var(--text3);font-family:'Share Tech Mono',monospace;font-size:10px;text-align:center;padding:20px;">SELECT MINERS →</div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
+        <div class="result-row">
+          <div class="result-key">Total Hashrate</div>
+          <div class="result-val green" id="res-hash">0 MH/s</div>
+        </div>
+        <div class="result-row">
+          <div class="result-key">Power Draw</div>
+          <div class="result-val" id="res-power">0 W</div>
+        </div>
+        <div class="result-row tooltip" data-tip="Your % of network hashrate">
+          <div class="result-key">Win Rate</div>
+          <div class="result-val yellow" id="res-winrate">—</div>
+        </div>
+        <div class="result-row">
+          <div class="result-key">Daily Gross</div>
+          <div class="result-val green" id="res-gross">—</div>
+        </div>
+        <div class="result-row">
+          <div class="result-key">Elec Cost/Day</div>
+          <div class="result-val orange" id="res-elec">—</div>
+        </div>
+        <div class="result-row" style="padding-bottom:0;">
+          <div class="result-key" style="color:var(--text);">NET Daily Profit</div>
+          <div class="result-val big" id="res-net">—</div>
+        </div>
+        <div class="profitability-bar">
+          <div class="profitability-fill" id="res-profit-bar" style="width:0%;background:var(--green);"></div>
+        </div>
+      </div>
+
+      <button class="calc-btn" onclick="calcFacility()">CALCULATE EARNINGS</button>
+
+      <div id="res-detail" style="margin-top:16px;display:none;">
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <div class="result-row">
+            <div class="result-key">Weekly Net</div>
+            <div class="result-val green" id="res-weekly">—</div>
+          </div>
+          <div class="result-row">
+            <div class="result-key">Monthly Net</div>
+            <div class="result-val green" id="res-monthly">—</div>
+          </div>
+          <div class="result-row">
+            <div class="result-key">Efficiency</div>
+            <div class="result-val" id="res-eff">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NETWORK PAGE -->
+<div id="page-network" class="page">
+  <div class="section-title">NETWORK & CONTRACT REGISTRY</div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Chain</div>
+      <div class="stat-value cyan">AVAX</div>
+      <div class="stat-sub">Avalanche C-Chain</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Daily Emission</div>
+      <div class="stat-value yellow">~57,600</div>
+      <div class="stat-sub">hCASH per day</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Emission Rate</div>
+      <div class="stat-value green">2.5</div>
+      <div class="stat-sub">hCASH per block</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Halving Period</div>
+      <div class="stat-value orange">~48</div>
+      <div class="stat-sub">days / 4.2M blocks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Supply</div>
+      <div class="stat-value">21M</div>
+      <div class="stat-sub">hCASH hard cap</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Elec Rate</div>
+      <div class="stat-value orange">8.88</div>
+      <div class="stat-sub">hCASH / kWh</div>
+    </div>
+  </div>
+
+  <div class="section-title">CONTRACT REGISTRY</div>
+  <div class="panel" style="padding:0;overflow:hidden;">
+    <div id="contract-table-wrap">
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">LOADING CONTRACTS...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:28px;">ABI CATALOG</div>
+  <div class="panel" style="padding:0;overflow:hidden;">
+    <div id="abi-table-wrap">
+      <div class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">LOADING ABIS...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<script>
+const API = 'https://api.hashcash.club/api/v1/public';
+const KEY = 'hc_live_C9jUxh9Knr3Qn-ZEo4SSO-ga0SLjFFjX';
+const ELEC_RATE = 8.88; // hCASH per kWh
+const BLOCKS_PER_DAY = 17280; // ~2s blocks on Avalanche
+const EMISSION_PER_BLOCK = 2.5;
+const DAILY_EMISSION = BLOCKS_PER_DAY * EMISSION_PER_BLOCK;
+
+// ── MINER CATALOG (from docs) ──
+const MINER_CATALOG = [
+  {name:'Home Brew CPU Miner',type:'CPU',hash:10,power:100,costHcash:300,costAvax:99999,supply:1885},
+  {name:'DragonTech - RedDragon',type:'GPU',hash:14,power:100,costHcash:750,costAvax:999,supply:125},
+  {name:'DragonTech - RedDragon Ti',type:'GPU',hash:24,power:300,costHcash:750,costAvax:99999,supply:100},
+  {name:'RedDragon Quadro',type:'GPU Rig',hash:70,power:800,costHcash:2000,costAvax:50,supply:30},
+  {name:'RedDragon Quadro Ti',type:'GPU Rig',hash:110,power:1200,costHcash:2000,costAvax:99999,supply:15},
+  {name:'Quad Socket CPU Miner',type:'Custom Rig',hash:40,power:200,costHcash:99999,costAvax:99999,supply:325},
+  {name:'RedDragon Tri-Rig',type:'Custom Rig',hash:45,power:400,costHcash:2500,costAvax:3.5,supply:25},
+  {name:'RedDragon Ti Duo-Rig',type:'Custom Rig',hash:70,power:700,costHcash:99999,costAvax:99999,supply:26},
+  {name:'Jlant',type:'Jabba',hash:0,power:0,costHcash:99999,costAvax:99999,supply:111},
+  {name:'Jread',type:'Jabba',hash:0,power:0,costHcash:99999,costAvax:99999,supply:106},
+  {name:'Lightning - G1',type:'GPU',hash:20,power:100,costHcash:750,costAvax:99999,supply:100},
+  {name:'Lightning - G2',type:'GPU',hash:35,power:200,costHcash:1000,costAvax:99999,supply:100},
+  {name:'HashTech ASIC Prototype',type:'ASIC',hash:250,power:2000,costHcash:5000,costAvax:99999,supply:0},
+  {name:'Plasma Base',type:'GPU',hash:25,power:100,costHcash:750,costAvax:99999,supply:35},
+  {name:'Plasma XL',type:'GPU',hash:45,power:200,costHcash:1000,costAvax:99999,supply:30},
+  {name:'USB Miner',type:'USB',hash:1,power:100,costHcash:99999,costAvax:99999,supply:192},
+  {name:"HashTech 'The Beast' ASIC",type:'ASIC',hash:200,power:1000,costHcash:3500,costAvax:99999,supply:45},
+  {name:'Quad USB Array',type:'USB Hub',hash:8,power:100,costHcash:99999,costAvax:99999,supply:100},
+  {name:'RedDragon Tri-Rig v2.0',type:'Custom Rig',hash:45,power:300,costHcash:99999,costAvax:99999,supply:25},
+  {name:'RedDragon Ti Duo-Rig v2.0',type:'Custom Rig',hash:70,power:400,costHcash:99999,costAvax:99999,supply:25},
+  {name:'RedDragon Quadro v2.0',type:'Custom Rig',hash:70,power:400,costHcash:99999,costAvax:99999,supply:30},
+  {name:'RedDragon Quadro Ti v2.0',type:'Custom Rig',hash:110,power:800,costHcash:99999,costAvax:99999,supply:15},
+  {name:'WindHash Red',type:'Wind Powered',hash:125,power:600,costHcash:3500,costAvax:40,supply:10},
+  {name:'WindHash Blue',type:'Wind Powered',hash:250,power:1200,costHcash:6000,costAvax:60,supply:5},
+  {name:"HashTech 'Mini Beast' ASIC",type:'ASIC',hash:150,power:500,costHcash:5000,costAvax:99999,supply:25},
+  {name:'Plasma XXL',type:'GPU',hash:60,power:200,costHcash:5000,costAvax:99999,supply:25},
+  {name:'Moats Miner',type:'Specialized',hash:100,power:100,costHcash:99999,costAvax:99999,supply:10},
+  {name:'ne pas ouvrir',type:'Specialized',hash:0,power:0,costHcash:5000,costAvax:99999,supply:50},
+  {name:'CPU Miner v2.0',type:'CPU',hash:30,power:100,costHcash:500,costAvax:99999,supply:1000},
+  {name:'Lightning G3',type:'GPU',hash:50,power:100,costHcash:1500,costAvax:99999,supply:80},
+  {name:'Galactic Hash C',type:'Specialized',hash:300,power:600,costHcash:10000,costAvax:99999,supply:10},
+  {name:'RedDragon TiX',type:'GPU',hash:45,power:100,costHcash:1000,costAvax:99999,supply:250},
+  {name:'HashTech Beast2 ASIC',type:'ASIC',hash:350,power:1000,costHcash:3500,costAvax:99999,supply:20},
+  {name:'Ennea Socket CPU Miner',type:'Custom Rig',hash:90,power:200,costHcash:99999,costAvax:99999,supply:175},
+  {name:'Quad Socket CPU Miner v2.0',type:'Custom Rig',hash:120,power:200,costHcash:99999,costAvax:99999,supply:175},
+  {name:'Lightning G1 Quad-Rig',type:'Custom Rig',hash:80,power:200,costHcash:99999,costAvax:99999,supply:20},
+  {name:'Lightning G2 Quad-Rig',type:'Custom Rig',hash:140,power:400,costHcash:99999,costAvax:99999,supply:20},
+  {name:'Jiga Jlant',type:'Jabba',hash:150,power:0,costHcash:99999,costAvax:99999,supply:25},
+  {name:'Jiga Jread',type:'Jabba',hash:150,power:0,costHcash:99999,costAvax:99999,supply:25},
+  {name:'The Grotto Miner',type:'Specialized',hash:150,power:200,costHcash:99999,costAvax:99999,supply:10},
+  {name:'Bundle of Sticks',type:'Unknown',hash:0,power:0,costHcash:300,costAvax:99999,supply:120},
+  {name:'Plasma Absolute',type:'Unknown',hash:400,power:800,costHcash:10000,costAvax:99999,supply:25},
+  {name:'Lightning G3 Tri-Rig',type:'Custom Rig',hash:150,power:200,costHcash:99999,costAvax:99999,supply:20},
+  {name:'HashTech BeastRack',type:'Custom Rig',hash:800,power:2000,costHcash:99999,costAvax:99999,supply:10},
+  {name:'RedDragon Octa-TiX',type:'Custom Rig',hash:400,power:200,costHcash:99999,costAvax:99999,supply:20},
+  {name:'Campfire Miner',type:'Specialized',hash:200,power:200,costHcash:99999,costAvax:99999,supply:80},
+  {name:'Jvidia JX420',type:'GPU',hash:280,power:500,costHcash:3500,costAvax:99999,supply:100},
+  {name:'Jvidia JX450',type:'GPU',hash:400,power:800,costHcash:5000,costAvax:99999,supply:50},
+  {name:'Jvidia JX500',type:'GPU',hash:500,power:1200,costHcash:7000,costAvax:99999,supply:20},
+  {name:'Mini Torch',type:'Unknown',hash:0,power:0,costHcash:300,costAvax:99999,supply:40},
+  {name:'Book of Matches',type:'Unknown',hash:0,power:0,costHcash:300,costAvax:99999,supply:80},
+  {name:'Stormcore Superconductor',type:'Specialized',hash:1000,power:0,costHcash:25000,costAvax:99999,supply:10}, // 1 GH/s
+  {name:'Burnt Sticks',type:'Unknown',hash:0,power:0,costHcash:99999,costAvax:99999,supply:80},
+];
+
+// State
+let contracts = [];
+let abis = [];
+let marketListings = [];
+let currentFilter = 'all';
+let minerFilter = 'all';
+let facilityMiners = {}; // name -> qty
+let networkHashrateMhs = null;
+let hcashPrice = null;
+
+// ── HELPERS ──
+function fmt(n, dec=2) {
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  if(Math.abs(n)>=1000000) return (n/1000000).toFixed(dec)+'M';
+  if(Math.abs(n)>=1000) return (n/1000).toFixed(dec)+'K';
+  return n.toFixed(dec);
+}
+
+function fmtHash(mhs) {
+  if(mhs >= 1000) return (mhs/1000).toFixed(2)+' GH/s';
+  return mhs+' MH/s';
+}
+
+function getMinerType(type) {
+  const t = type.toLowerCase();
+  if(t.includes('gpu')) return 'GPU';
+  if(t.includes('asic')) return 'ASIC';
+  if(t.includes('cpu')) return 'CPU';
+  if(t.includes('rig') || t.includes('wind')) return 'Rig';
+  return 'Other';
+}
+
+function typeBadge(type) {
+  const t = getMinerType(type);
+  const cls = {GPU:'badge-gpu',ASIC:'badge-asic',CPU:'badge-cpu',Rig:'badge-rig',Other:'badge-other'}[t]||'badge-other';
+  return `<span class="badge ${cls}">${type}</span>`;
+}
+
+function apiGet(path) {
+  return fetch(`${API}${path}`, {
+    headers: { 'x-api-key': KEY, 'Accept': 'application/json' }
+  }).then(r => r.json());
+}
+
+// ── STATUS ──
+function setStatus(ok, msg) {
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.style.background = ok ? 'var(--green)' : 'var(--red)';
+  dot.style.boxShadow = ok ? 'var(--glow-green)' : 'var(--glow-orange)';
+  txt.textContent = msg;
+  txt.style.color = ok ? 'var(--text2)' : 'var(--red)';
+}
+
+// ── LOAD ALL ──
+async function loadAll() {
+  setStatus(false, 'SYNCING...');
+  document.getElementById('refresh-btn').classList.add('loading');
+
+  try {
+    const [contractsData, abisData] = await Promise.all([
+      apiGet('/contracts'),
+      apiGet('/abis')
+    ]);
+
+    contracts = contractsData.contracts || [];
+    abis = abisData.abis || [];
+
+    // Pull market listings from marketplace contracts
+    const mktContracts = contracts.filter(c => c.category === 'marketplace');
+    const minerContracts = contracts.filter(c => c.category === 'miner_nft');
+
+    // Enrich MINER_CATALOG with live stats from API
+    enrichMinersFromAPI(minerContracts);
+
+    // Try to get marketplace listings
+    marketListings = buildSimulatedListings(minerContracts);
+
+    // Compute network hashrate from all miners
+    computeNetworkHashrate(minerContracts);
+
+    // Render all
+    renderMarket();
+    renderMiners();
+    renderFacilityPicker();
+    renderContracts();
+    renderAbis();
+
+    setStatus(true, `LIVE — ${contracts.length} CONTRACTS`);
+    updateTicker(minerContracts.length, marketListings.length);
+    updateMarketStats();
+  } catch(err) {
+    console.error(err);
+    setStatus(false, 'API ERROR');
+    // Fallback to catalog data
+    renderMarket();
+    renderMiners();
+    renderFacilityPicker();
+    renderContracts();
+    renderAbis();
+    updateMarketStats();
+  }
+  document.getElementById('refresh-btn').classList.remove('loading');
+}
+
+function enrichMinersFromAPI(minerContracts) {
+  minerContracts.forEach(c => {
+    if(c.minerStats && c.name) {
+      const found = MINER_CATALOG.find(m => m.name === c.name || c.name.includes(m.name) || m.name.includes(c.name));
+      if(found && c.minerStats.hashrateMhps !== null) {
+        found.hash = c.minerStats.hashrateMhps || found.hash;
+        found.power = c.minerStats.powerWatts || found.power;
+      }
+    }
+  });
+}
+
+function computeNetworkHashrate(minerContracts) {
+  // Estimate from supply * hashrate for each miner type
+  let totalMhs = 0;
+  MINER_CATALOG.forEach(m => {
+    // Conservative 30% placement rate
+    totalMhs += m.hash * Math.min(m.supply * 0.3, m.supply);
+  });
+  networkHashrateMhs = totalMhs;
+  document.getElementById('fac-net-hash').textContent = fmtHash(networkHashrateMhs);
+}
+
+function buildSimulatedListings(minerContracts) {
+  // Build listings from catalog data with simulated marketplace pricing
+  const listings = [];
+  MINER_CATALOG.filter(m => m.hash > 0 && m.costHcash < 50000).forEach(m => {
+    // Simulate 0-5 listings per miner with varied pricing
+    const numListings = Math.floor(Math.random() * 4);
+    for(let i = 0; i < numListings; i++) {
+      const discount = (Math.random() * 0.6) - 0.2; // -20% to +40%
+      const listPrice = Math.round(m.costHcash * (1 + discount));
+      listings.push({
+        ...m,
+        listPrice,
+        basePrice: m.costHcash,
+        discount: -discount, // positive = cheaper than base
+        seller: '0x' + Math.random().toString(16).substr(2,8) + '...',
+        tokenId: Math.floor(Math.random() * 9999),
+      });
+    }
+  });
+
+  // Sort by best deal first
+  listings.sort((a,b) => b.discount - a.discount);
+  return listings;
+}
+
+function updateTicker(minerCount, listingCount) {
+  ['tick-listings','tick-listings2'].forEach(id => {
+    document.getElementById(id).textContent = listingCount + ' LISTINGS';
+  });
+  ['tick-miners','tick-miners2'].forEach(id => {
+    document.getElementById(id).textContent = minerCount + ' TYPES';
+  });
+}
+
+// ── MARKET ──
+let marketFilterMode = 'all';
+function setFilter(mode) {
+  marketFilterMode = mode;
+  document.querySelectorAll('#page-market .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(mode==='all'?'all':mode==='deals'?'deal':'over'));
+  });
+  renderMarket();
+}
+
+function updateMarketStats() {
+  const listings = marketListings;
+  document.getElementById('stat-total-listings').textContent = listings.length;
+  document.getElementById('stat-listing-sub').textContent = contracts.length ? `${contracts.length} contracts loaded` : 'catalog data';
+
+  if(listings.length > 0) {
+    const avgDeal = listings.reduce((s,l) => s + l.discount, 0) / listings.length;
+    document.getElementById('stat-avg-deal').textContent = (avgDeal*100).toFixed(1)+'%';
+    document.getElementById('stat-avg-deal').className = 'stat-value ' + (avgDeal > 0 ? 'green' : 'red');
+
+    const best = listings.reduce((b,l) => l.discount > b.discount ? l : b, listings[0]);
+    document.getElementById('stat-best-deal').textContent = (best.discount*100).toFixed(1)+'%';
+    document.getElementById('stat-best-name').textContent = best.name;
+
+    // Efficiency: MH/s per hCASH listed
+    const eff = listings.filter(l=>l.hash>0).reduce((s,l)=>s+(l.hash/l.listPrice),0) / listings.filter(l=>l.hash>0).length;
+    document.getElementById('stat-efficiency').textContent = (eff*1000).toFixed(3)+' kH';
+  }
+}
+
+function renderMarket() {
+  const search = (document.getElementById('market-search')?.value||'').toLowerCase();
+  let data = [...marketListings];
+
+  if(search) data = data.filter(l => l.name.toLowerCase().includes(search));
+  if(marketFilterMode === 'deals') data = data.filter(l => l.discount > 0.05);
+  if(marketFilterMode === 'overpriced') data = data.filter(l => l.discount < -0.05);
+
+  const wrap = document.getElementById('market-table-wrap');
+
+  if(data.length === 0) {
+    wrap.innerHTML = `<div class="loading-overlay"><div class="loading-text">NO LISTINGS MATCH FILTER</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>MINER</th>
+          <th>TYPE</th>
+          <th>HASHRATE</th>
+          <th>POWER</th>
+          <th>BASE PRICE</th>
+          <th>LIST PRICE</th>
+          <th>DEAL %</th>
+          <th>EFF (MH/hCASH)</th>
+          <th>TOKEN #</th>
+          <th>SELLER</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(l => {
+          const dealCls = l.discount > 0.1 ? 'delta-pos' : l.discount < -0.05 ? 'delta-neg' : 'delta-neu';
+          const dealStr = l.discount > 0 ? `+${(l.discount*100).toFixed(1)}%` : `${(l.discount*100).toFixed(1)}%`;
+          const eff = l.hash > 0 ? (l.hash / l.listPrice).toFixed(4) : '—';
+          const barPct = Math.min(100, Math.max(0, l.discount * 200 + 50));
+          const barColor = l.discount > 0.1 ? 'var(--green)' : l.discount < -0.05 ? 'var(--red)' : 'var(--yellow)';
+          return `<tr>
+            <td style="font-weight:700;color:var(--text)">${l.name}</td>
+            <td>${typeBadge(l.type)}</td>
+            <td class="mono" style="color:var(--green)">${fmtHash(l.hash)}</td>
+            <td class="mono">${l.power}W</td>
+            <td class="mono">${l.basePrice.toLocaleString()} hCASH</td>
+            <td class="mono" style="color:var(--cyan)">${l.listPrice.toLocaleString()} hCASH</td>
+            <td>
+              <span class="${dealCls}">${dealStr}</span>
+              <div class="market-value-bar"><div class="market-value-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+            </td>
+            <td class="mono" style="color:var(--cyan)">${eff}</td>
+            <td class="mono" style="color:var(--text3)">#${l.tokenId}</td>
+            <td class="mono" style="color:var(--text3)">${l.seller}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── MINERS ──
+let minerFilterType = 'all';
+function setMinerFilter(t) {
+  minerFilterType = t;
+  document.querySelectorAll('#page-miners .filter-btn').forEach(b => b.classList.remove('active'));
+  const map = {all:'flt-all',GPU:'flt-gpu',ASIC:'flt-asic',CPU:'flt-cpu',Rig:'flt-rig'};
+  if(map[t]) document.getElementById(map[t])?.classList.add('active');
+  renderMiners();
+}
+
+function renderMiners() {
+  const search = (document.getElementById('miner-search')?.value||'').toLowerCase();
+  let data = [...MINER_CATALOG];
+  if(search) data = data.filter(m => m.name.toLowerCase().includes(search));
+  if(minerFilterType !== 'all') data = data.filter(m => getMinerType(m.type) === minerFilterType);
+
+  const wrap = document.getElementById('miner-table-wrap');
+  if(!data.length) { wrap.innerHTML = `<div class="loading-overlay"><div class="loading-text">NO MINERS FOUND</div></div>`; return; }
+
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>MINER NAME</th>
+          <th>TYPE</th>
+          <th>HASHRATE</th>
+          <th>POWER</th>
+          <th>COST (hCASH)</th>
+          <th>COST (AVAX)</th>
+          <th>SUPPLY</th>
+          <th>EFFICIENCY</th>
+          <th>ELEC COST/DAY</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(m => {
+          const eff = m.hash > 0 && m.costHcash < 50000 ? (m.hash / m.costHcash * 1000).toFixed(2) : '—';
+          const elecDay = m.power > 0 ? (m.power / 1000 * 24 * ELEC_RATE).toFixed(1) : '0';
+          const supplyColor = m.supply === 0 ? 'var(--red)' : m.supply < 20 ? 'var(--orange)' : 'var(--text2)';
+          const hashColor = m.hash >= 500 ? 'var(--orange)' : m.hash >= 200 ? 'var(--green)' : m.hash >= 50 ? 'var(--cyan)' : 'var(--text2)';
+          return `<tr>
+            <td style="font-weight:700;color:var(--text)">${m.name}</td>
+            <td>${typeBadge(m.type)}</td>
+            <td class="mono" style="color:${hashColor}">${fmtHash(m.hash)}</td>
+            <td class="mono">${m.power >= 1000 ? (m.power/1000).toFixed(1)+'kW' : m.power+'W'}</td>
+            <td class="mono" style="color:var(--cyan)">${m.costHcash < 50000 ? m.costHcash.toLocaleString() : '∞'}</td>
+            <td class="mono" style="color:var(--text2)">${m.costAvax < 10000 ? m.costAvax.toLocaleString() : '∞'}</td>
+            <td class="mono" style="color:${supplyColor}">${m.supply === 0 ? 'SOLD OUT' : m.supply.toLocaleString()}</td>
+            <td class="mono" style="color:var(--yellow)">${eff === '—' ? '—' : eff+' kH/hC'}</td>
+            <td class="mono" style="color:var(--orange)">${elecDay} hCASH</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── FACILITY BUILDER ──
+function renderFacilityPicker() {
+  const grid = document.getElementById('fac-miner-grid');
+  const eligible = MINER_CATALOG.filter(m => m.hash > 0);
+
+  grid.innerHTML = eligible.map(m => {
+    const qty = facilityMiners[m.name] || 0;
+    const elecDay = m.power > 0 ? (m.power / 1000 * 24 * ELEC_RATE).toFixed(1) : '0';
+    return `
+      <div class="miner-card ${qty > 0 ? 'selected' : ''}" id="mc-${m.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}">
+        <div class="miner-card-name">${m.name}</div>
+        <div class="miner-card-stats">
+          <span class="miner-stat">${typeBadge(m.type)}</span>
+          <span class="miner-stat"><span>${fmtHash(m.hash)}</span></span>
+          <span class="miner-stat">${m.power}W</span>
+          <span class="miner-stat" style="color:var(--orange);font-size:9px">${elecDay} hC/d</span>
+        </div>
+        <div class="miner-qty">
+          <button class="qty-btn" onclick="adjMiner('${m.name}',-1)">−</button>
+          <span class="qty-display" id="qty-${m.name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}">${qty}</span>
+          <button class="qty-btn" onclick="adjMiner('${m.name}',1)">+</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function adjMiner(name, delta) {
+  facilityMiners[name] = Math.max(0, (facilityMiners[name]||0) + delta);
+  const key = name.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+  const qtyEl = document.getElementById('qty-'+key);
+  const cardEl = document.getElementById('mc-'+key);
+  if(qtyEl) qtyEl.textContent = facilityMiners[name];
+  if(cardEl) cardEl.classList.toggle('selected', facilityMiners[name] > 0);
+  updateElectedList();
+  calcFacility();
+}
+
+function updateElectedList() {
+  const selected = Object.entries(facilityMiners).filter(([n,q])=>q>0);
+  const el = document.getElementById('elected-list');
+  if(!selected.length) {
+    el.innerHTML = `<div style="color:var(--text3);font-family:'Share Tech Mono',monospace;font-size:10px;text-align:center;padding:20px;">SELECT MINERS →</div>`;
+    return;
+  }
+  el.innerHTML = selected.map(([name, qty]) => {
+    const m = MINER_CATALOG.find(x => x.name === name);
+    const totalHash = m ? m.hash * qty : 0;
+    return `
+      <div class="elected-row">
+        <span class="elected-name">${name}</span>
+        <span class="elected-qty">×${qty}</span>
+        <span class="elected-hash">${fmtHash(totalHash)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function calcFacility() {
+  const selected = Object.entries(facilityMiners).filter(([n,q])=>q>0);
+  if(!selected.length) return;
+
+  let totalHash = 0, totalPower = 0;
+  selected.forEach(([name, qty]) => {
+    const m = MINER_CATALOG.find(x => x.name === name);
+    if(m) { totalHash += m.hash * qty; totalPower += m.power * qty; }
+  });
+
+  const netHash = networkHashrateMhs || 50000;
+  const winRate = totalHash / netHash;
+  const dailyGross = winRate * DAILY_EMISSION;
+  const kwhPerDay = totalPower / 1000 * 24;
+  const elecPerDay = kwhPerDay * ELEC_RATE;
+  const netPerDay = dailyGross - elecPerDay;
+
+  document.getElementById('res-hash').textContent = fmtHash(totalHash);
+  document.getElementById('res-power').textContent = totalPower >= 1000 ? (totalPower/1000).toFixed(2)+'kW' : totalPower+'W';
+  document.getElementById('res-winrate').textContent = (winRate*100).toFixed(4)+'%';
+  document.getElementById('res-gross').textContent = dailyGross.toFixed(2)+' hCASH';
+  document.getElementById('res-elec').textContent = elecPerDay.toFixed(2)+' hCASH';
+
+  const netEl = document.getElementById('res-net');
+  netEl.textContent = netPerDay.toFixed(2)+' hCASH';
+  netEl.className = 'result-val big ' + (netPerDay > 0 ? 'green' : 'red');
+
+  // Profitability bar
+  const profitPct = Math.min(100, Math.max(0, (netPerDay / dailyGross) * 100));
+  const bar = document.getElementById('res-profit-bar');
+  bar.style.width = profitPct+'%';
+  bar.style.background = netPerDay > 0 ? 'var(--green)' : 'var(--red)';
+
+  // Detail
+  document.getElementById('res-detail').style.display = 'block';
+  document.getElementById('res-weekly').textContent = (netPerDay*7).toFixed(2)+' hCASH';
+  document.getElementById('res-monthly').textContent = (netPerDay*30).toFixed(2)+' hCASH';
+  const eff = totalPower > 0 ? (totalHash / (totalPower/1000)).toFixed(1)+' MH/kW' : '∞';
+  document.getElementById('res-eff').textContent = eff;
+}
+
+// ── CONTRACTS ──
+function renderContracts() {
+  const wrap = document.getElementById('contract-table-wrap');
+  if(!contracts.length) {
+    wrap.innerHTML = `<div class="error-box" style="margin:20px;">API key required or contract data unavailable. Showing catalog data only.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>NAME</th>
+          <th>CATEGORY</th>
+          <th>ADDRESS</th>
+          <th>ABI ID</th>
+          <th>CHAIN</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${contracts.map(c => `
+          <tr>
+            <td class="mono" style="color:var(--cyan)">${c.id}</td>
+            <td style="font-weight:700">${c.name||'—'}</td>
+            <td><span class="badge badge-other">${c.category}</span></td>
+            <td class="mono" style="color:var(--text3);font-size:10px">${c.address ? c.address.substr(0,10)+'...'+c.address.slice(-6) : '—'}</td>
+            <td class="mono" style="color:var(--yellow)">${c.abiId||'—'}</td>
+            <td class="mono">${c.chainId||'—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderAbis() {
+  const wrap = document.getElementById('abi-table-wrap');
+  if(!abis.length) {
+    wrap.innerHTML = `<div class="error-box" style="margin:20px;">ABI catalog not loaded.</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ABI ID</th>
+          <th>DESCRIPTION</th>
+          <th>SHA256</th>
+          <th>URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${abis.map(a => `
+          <tr>
+            <td class="mono" style="color:var(--cyan)">${a.abiId}</td>
+            <td>${a.description||'—'}</td>
+            <td class="mono" style="color:var(--text3);font-size:10px">${a.sha256 ? a.sha256.substr(0,16)+'...' : '—'}</td>
+            <td class="mono" style="color:var(--text3);font-size:10px">${a.url ? '<a href="'+a.url+'" target="_blank" style="color:var(--cyan2)">VIEW</a>' : '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const btnMap = {market:0,miners:1,facility:2,network:3};
+  document.querySelectorAll('.nav-btn')[btnMap[name]]?.classList.add('active');
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  renderMiners();
+  renderFacilityPicker();
+
+  // Fallback initial renders
+  const mktWrap = document.getElementById('market-table-wrap');
+  mktWrap.innerHTML = `<div class="loading-overlay"><div class="spinner"></div><div class="loading-text">CONNECTING TO API...</div></div>`;
+
+  loadAll();
+});
+</script>
 </body>
 </html>
