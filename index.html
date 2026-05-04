@@ -345,6 +345,14 @@
                         👁 Phantom
                         <span class="mode-desc">Limited visibility — only a foggy radius around you.</span>
                     </button>
+                    <button class="mode-btn" id="mode-rush" onclick="selectMode('rush', this)">
+                        ⚡ Rush
+                        <span class="mode-desc">45-second countdown per level. Keep charging forward.</span>
+                    </button>
+                    <button class="mode-btn" id="mode-chaos" onclick="selectMode('chaos', this)">
+                        🔥 Chaos
+                        <span class="mode-desc">Hazards hit harder and every move is critical.</span>
+                    </button>
                 </div>
             </div>
 
@@ -450,7 +458,7 @@
         {
             id: 'standard',
             name: 'Standard Works',
-            desc: '10 hand-crafted chambers. The classic experience.',
+            desc: '15 hand-crafted chambers. The classic experience.',
             levels: [
                 // Level 1 – Tutorial
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,2,0,0,0,0,2,1],[1,0,1,1,1,0,1,1,1,0,1],[1,2,0,0,0,0,0,0,0,2,1],[1,0,1,1,1,3,1,1,1,0,1],[1,1,1,1,1,1,1,1,1,1,1]] },
@@ -471,13 +479,23 @@
                 // Level 9 – Bonus Vault
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,8,0,0,17,0,0,8,17,1],[1,0,1,5,1,0,1,5,1,0,1],[1,0,6,0,0,0,0,0,6,0,1],[1,0,1,5,1,0,1,5,1,0,1],[1,17,8,0,0,3,0,0,8,17,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 // Level 10 – Grand Finale
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,9,9,8,17,8,10,10,2,1],[1,4,1,5,1,0,1,5,1,4,1],[1,0,6,0,14,0,15,0,6,0,1],[1,4,1,13,1,16,1,13,1,4,1],[1,2,0,8,0,3,0,8,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] }
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,9,9,8,17,8,10,10,2,1],[1,4,1,5,1,0,1,5,1,4,1],[1,0,6,0,14,0,15,0,6,0,1],[1,4,1,13,1,16,1,13,1,4,1],[1,2,0,8,0,3,0,8,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                // Level 11 – Teleport Rally
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,0,14,0,0,0,15,0,2,1],[1,0,1,0,1,1,1,0,1,0,1],[1,0,0,0,8,0,8,0,0,0,1],[1,0,1,0,1,1,1,0,1,0,1],[1,2,0,15,0,0,0,14,0,3,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                // Level 12 – Conveyor Gauntlet
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,9,9,0,0,0,10,10,2,1],[1,0,1,1,5,0,5,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,4,0,4,1,1,0,1],[1,2,10,10,0,3,0,0,10,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                // Level 13 – Bonus Circuit
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,0,5,0,0,0,5,0,2,1],[1,0,1,1,1,1,1,1,1,0,1],[1,14,0,0,17,0,17,0,0,15,1],[1,0,1,1,1,1,1,1,1,0,1],[1,2,0,5,0,0,0,5,0,3,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                // Level 14 – Frozen Gears
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,16,16,16,2,16,16,16,2,1],[1,0,16,1,0,0,0,1,16,0,1],[1,0,16,0,8,0,8,0,16,0,1],[1,0,16,1,0,0,0,1,16,0,1],[1,2,16,16,16,3,16,16,16,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                // Level 15 – Hazard Vault
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,8,0,9,9,0,8,17,2,1],[1,0,1,5,1,1,1,5,1,0,1],[1,0,0,0,0,0,0,0,0,0,1],[1,0,1,5,1,1,1,5,1,0,1],[1,2,0,9,0,3,0,9,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] }
             ]
         },
         {
             id: 'inferno',
             name: 'Inferno Depths',
-            desc: '8 brutal heat-forge levels. Hazards everywhere.',
+            desc: '10 brutal heat-forge levels. Hazards everywhere.',
             levels: [
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,4,4,4,2,4,4,4,2,1],[1,4,1,0,1,0,1,0,1,4,1],[1,4,0,0,0,0,0,0,0,4,1],[1,4,1,0,1,0,1,0,1,4,1],[1,2,4,4,4,3,4,4,4,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,8,4,8,2,8,4,8,2,1],[1,4,1,8,1,0,1,8,1,4,1],[1,0,0,0,5,0,5,0,0,0,1],[1,4,1,6,1,0,1,6,1,4,1],[1,2,8,4,8,3,8,4,8,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
@@ -485,22 +503,21 @@
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,13,4,0,2,0,4,13,17,1],[1,4,1,1,1,0,1,1,1,4,1],[1,0,0,0,0,0,0,0,0,0,1],[1,4,1,14,1,4,1,15,1,4,1],[1,17,8,4,0,3,0,4,8,17,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,9,9,9,2,10,10,10,2,1],[1,4,1,1,5,0,5,1,1,4,1],[1,0,6,0,0,0,0,0,6,0,1],[1,4,1,1,4,8,4,1,1,4,1],[1,2,0,0,0,3,0,0,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,8,13,8,2,8,13,8,2,1],[1,4,1,0,1,4,1,0,1,4,1],[1,0,0,5,0,0,0,5,0,0,1],[1,4,1,6,1,4,1,6,1,4,1],[1,2,8,4,8,3,8,4,8,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,4,9,4,17,4,10,4,2,1],[1,0,1,1,1,4,1,1,1,0,1],[1,0,0,0,14,4,15,0,0,0,1],[1,0,1,13,1,4,1,13,1,0,1],[1,2,4,8,4,3,4,8,4,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,4,8,4,17,4,8,4,17,1],[1,4,1,1,5,4,5,1,1,4,1],[1,0,6,4,0,8,0,4,6,0,1],[1,4,1,13,5,4,5,13,1,4,1],[1,17,4,8,4,3,4,8,4,17,1],[1,1,1,1,1,1,1,1,1,1,1]] }
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,0,4,0,2,0,4,0,2,1],[1,0,1,1,1,0,1,1,1,0,1],[1,0,8,9,9,9,9,9,8,0,1],[1,0,1,1,1,0,1,1,1,0,1],[1,2,0,4,0,3,0,4,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,0,15,0,2,0,14,0,17,1],[1,0,1,1,1,4,1,1,1,0,1],[1,0,0,0,8,0,8,0,0,0,1],[1,0,1,1,1,4,1,1,1,0,1],[1,17,0,15,0,3,0,14,0,17,1],[1,1,1,1,1,1,1,1,1,1,1]] }
             ]
         },
         {
             id: 'arcane',
             name: 'Arcane Labyrinth',
-            desc: '7 complex puzzle chambers. Logic over speed.',
+            desc: '9 complex puzzle chambers. Logic over speed.',
             levels: [
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,0,1,0,0,0,1,0,2,1],[1,0,1,1,5,1,5,1,1,0,1],[1,0,0,0,6,0,6,0,0,0,1],[1,0,1,1,5,1,5,1,1,0,1],[1,2,0,1,0,3,0,1,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,16,16,2,0,2,16,16,2,1],[1,0,16,1,1,0,1,1,16,0,1],[1,0,14,0,0,0,0,0,15,0,1],[1,0,16,1,5,4,5,1,16,0,1],[1,2,16,6,0,3,0,6,16,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,9,9,0,2,0,10,10,2,1],[1,0,1,1,8,1,8,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,1],[1,0,1,5,1,4,1,5,1,0,1],[1,2,0,6,0,3,0,6,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
                 { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,0,14,0,2,0,15,0,17,1],[1,0,1,1,1,0,1,1,1,0,1],[1,0,8,0,0,0,0,0,8,0,1],[1,0,1,1,16,0,16,1,1,0,1],[1,17,0,0,16,3,16,0,0,17,1],[1,1,1,1,1,1,1,1,1,1,1]] },
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,13,0,2,8,2,0,13,2,1],[1,0,1,5,1,0,1,5,1,0,1],[1,0,0,6,0,0,0,6,0,0,1],[1,0,1,5,1,16,1,5,1,0,1],[1,2,13,0,2,3,2,0,13,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,4,9,14,17,15,10,4,2,1],[1,0,1,1,1,0,1,1,1,0,1],[1,0,0,8,0,0,0,8,0,0,1],[1,0,1,13,1,16,1,13,1,0,1],[1,2,4,0,5,3,5,0,4,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
-                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,17,4,8,13,17,13,8,4,17,1],[1,4,1,5,1,4,1,5,1,4,1],[1,0,6,16,14,0,15,16,6,0,1],[1,4,1,5,1,4,1,5,1,4,1],[1,17,9,8,13,3,13,8,10,17,1],[1,1,1,1,1,1,1,1,1,1,1]] }
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,0,5,0,4,0,5,0,2,1],[1,0,1,1,1,1,1,1,1,0,1],[1,0,14,0,0,0,0,0,15,0,1],[1,0,1,1,1,1,1,1,1,0,1],[1,2,0,5,0,3,0,5,0,2,1],[1,1,1,1,1,1,1,1,1,1,1]] },
+                { map: [[1,1,1,1,1,1,1,1,1,1,1],[1,2,16,16,2,0,2,16,16,2,1],[1,0,16,1,1,0,1,1,16,0,1],[1,0,14,0,0,0,0,0,15,0,1],[1,0,16,1,5,4,5,1,16,0,1],[1,2,16,6,0,3,0,6,16,2,1],[1,1,1,1,1,1,1,1,1,1,1]] }
             ]
         }
     ];
@@ -586,9 +603,15 @@
 
     function updateHomeSummary() {
         const pack = MAP_PACKS.find(p => p.id === selectedMapPackId);
-        const modeLabels = { classic:'Classic Mode – 5 lives', blitz:'Blitz Mode – 60s timer', ironclad:'Iron Clad – One shot', endless:'Endless – loops forever', phantom:'Phantom – fog of war' };
-        document.getElementById('home-mode-summary').innerHTML = `<b style="color:var(--brass)">${modeLabels[selectedMode]}</b><br>${pack.name} · ${pack.levels.length} levels`;
-    }
+            const modeLabels = {
+                classic: 'Classic Mode – 5 lives',
+                blitz: 'Blitz Mode – 60s timer',
+                ironclad: 'Iron Clad – One shot',
+                endless: 'Endless – loops forever',
+                phantom: 'Phantom – fog of war',
+                rush: 'Rush Mode – 45s per level',
+                chaos: 'Chaos Mode – hazards hit harder'
+            };
 
     function switchTab(id) {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -631,11 +654,11 @@
         document.getElementById('game-ui').style.display = 'block';
         gameState.mode = selectedMode;
         gameState.mapPack = MAP_PACKS.find(p => p.id === selectedMapPackId);
-        gameState.lives = selectedMode === 'ironclad' ? 1 : selectedMode === 'blitz' ? 3 : 5;
+        gameState.lives = selectedMode === 'ironclad' ? 1 : selectedMode === 'blitz' || selectedMode === 'rush' ? 3 : 5;
         runStats = { totalScore: 0, totalCogs: 0, levelsCompleted: 0, damageTaken: 0, bestCombo: 1, startTime: Date.now() };
         document.getElementById('mode-badge').innerText = selectedMode.toUpperCase();
         document.getElementById('map-badge').innerText = gameState.mapPack.name.toUpperCase();
-        document.getElementById('timer-group').style.display = selectedMode === 'blitz' ? 'flex' : 'none';
+        document.getElementById('timer-group').style.display = selectedMode === 'blitz' || selectedMode === 'rush' ? 'flex' : 'none';
         initLevel(1);
         requestAnimationFrame(gameLoop);
     }
@@ -687,15 +710,15 @@
             }
         }
 
-        // Blitz timer
-        if(gameState.mode === 'blitz') {
-            gameState.blitzTimer = 60;
-            document.getElementById('timer-display').innerText = '60';
+        // Blitz / Rush timer
+        if(gameState.mode === 'blitz' || gameState.mode === 'rush') {
+            gameState.blitzTimer = gameState.mode === 'rush' ? 45 : 60;
+            document.getElementById('timer-display').innerText = String(gameState.blitzTimer);
+            document.getElementById('timer-display').style.color = gameState.mode === 'rush' ? '#66ccff' : '#ff8844';
             gameState.blitzInterval = setInterval(() => {
                 gameState.blitzTimer--;
                 document.getElementById('timer-display').innerText = gameState.blitzTimer;
                 if(gameState.blitzTimer <= 10) document.getElementById('timer-display').style.color = '#ff4444';
-                else document.getElementById('timer-display').style.color = '#ff8844';
                 if(gameState.blitzTimer <= 0) {
                     clearInterval(gameState.blitzInterval);
                     takeDamage(100, 'TIME EXPIRED');
@@ -977,8 +1000,10 @@
 
     function takeDamage(amt, type) {
         if(gameState.gameOver) return;
-        gameState.health -= amt;
-        runStats.damageTaken += amt;
+        const multiplier = gameState.mode === 'chaos' && gameState.mode !== 'ironclad' ? 1.5 : 1;
+        const actualDamage = amt * multiplier;
+        gameState.health -= actualDamage;
+        runStats.damageTaken += actualDamage;
         updateUI();
         canvas.classList.add('shake');
         setTimeout(() => canvas.classList.remove('shake'), 500);
@@ -987,7 +1012,7 @@
             if(gameState.lives <= 0) {
                 triggerGameOver(type);
             } else {
-                gameState.health = 100;
+                gameState.health = gameState.mode === 'ironclad' ? 1 : 100;
                 updateUI();
                 spawnFloatText(gameState.player.x, gameState.player.y, `💀 ${gameState.lives} lives left`);
             }
